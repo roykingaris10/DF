@@ -1,0 +1,6 @@
+
+local SkillDialogueDictionary = {
+	
+}
+
+return SkillDialogueDictionary

@@ -1,0 +1,171 @@
+local Server = require(script.Parent)
+local Network = Server.Network
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Kits = ReplicatedStorage.Kits
+local Nodes = Kits.Nodes
+
+local DialogueService = {}
+DialogueService.NPCDialogues = {}
+DialogueService.QuestDialogues = {}
+DialogueService.ShopDialogues = {}
+DialogueService.SkillDialogues = {}
+
+local function initializeNPC(NPC)
+	if not NPC then return end
+
+	for _, part in pairs(NPC:GetDescendants()) do
+		if part:IsA('BasePart') then 
+			part.CollisionGroup = "Characters"
+		end
+	end
+
+	if NPC:FindFirstChild('Dialogue') then
+		DialogueService.NPCDialogues[NPC.Name] = require(NPC.Dialogue)
+	elseif NPC:FindFirstChild('QuestDialogue') then
+		DialogueService.QuestDialogues[NPC.Name] = require(NPC.QuestDialogue)
+	elseif NPC:FindFirstChild('ShopDialogue') then
+		DialogueService.ShopDialogues[NPC.Name] = require(NPC.ShopDialogue)
+	elseif NPC:FindFirstChild('SkillDialogue') then
+		DialogueService.SkillDialogues[NPC.Name] = require(NPC.SkillDialogue)
+	end
+end
+
+function DialogueService.GetDialogue(player, NPC)
+	local entity = Server.EntityService.Find(player)
+	if not entity then
+		return false, "Entity not found"
+	end
+
+	if not player.Character or not player.Character:FindFirstChild("HumanoidRootPart") then
+		return false, "Character not loaded"
+	end
+
+	if not NPC:FindFirstChild("HumanoidRootPart") then
+		return false, "NPC invalid"
+	end
+
+	local distance = (player.Character.HumanoidRootPart.Position - NPC.HumanoidRootPart.Position).Magnitude
+	if distance > 50 then
+		return false, "Too far from NPC"
+	end
+
+	local profile = entity.SlotProfile
+
+	if DialogueService.QuestDialogues[NPC.Name] then
+		for _, questDialogue in pairs(DialogueService.QuestDialogues[NPC.Name]) do
+			local questName = questDialogue.Name
+
+			if table.find(profile.questsCompleted, questName) then
+				continue
+			end
+
+			if profile.currentQuests[questName] ~= nil then
+				local questInfo = Server.QuestInfo[questName]
+
+				if type(profile.currentQuests[questName]) == 'number' then
+					if questInfo.Requirement == profile.currentQuests[questName] then
+						table.insert(profile.questsCompleted, questName)
+						return true, questDialogue.Completed
+					else
+						return true, questDialogue.InProgress
+					end
+				elseif type(profile.currentQuests[questName]) == 'boolean' then
+					if profile.currentQuests[questName] then
+						table.insert(profile.questsCompleted, questName)
+						return true, questDialogue.Completed
+					else
+						return true, questDialogue.InProgress
+					end
+				end
+			end
+
+			return true, questDialogue.Initial
+		end
+	end
+
+	if DialogueService.ShopDialogues[NPC.Name] and Server.ShopInfo[NPC.Name] then
+		local shopData = Server.ShopInfo[NPC.Name]
+		return true, DialogueService.ShopDialogues[NPC.Name], shopData
+	end
+
+	if DialogueService.NPCDialogues[NPC.Name] then
+		local shopData = nil
+		if Server.ShopInfo[NPC.Name] then
+			shopData = Server.ShopInfo[NPC.Name]
+		end
+		return true, DialogueService.NPCDialogues[NPC.Name][1], shopData  -- Back to [1]
+	end
+
+	return false, "No dialogue found"
+end
+
+function DialogueService.ProcessAction(player, action, data)
+	local entity = Server.EntityService.Find(player)
+	if not entity then return false, "Entity not found" end
+
+	local profile = entity.SlotProfile
+
+	if action == "AcceptQuest" then
+		local questName = data.questName
+		if not Server.QuestInfo[questName] then return false, "Quest not found" end
+
+		if Server.QuestInfo[questName].Requirement then
+			profile.currentQuests[questName] = 0
+		else
+			profile.currentQuests[questName] = false
+		end
+
+		return true, "Quest accepted"
+
+	elseif action == "JoinFaction" then
+		local factionId = data.factionId
+		if not factionId then return false, "No faction specified" end
+
+		local success, displayNameOrError, levelRank = Server.FactionService.JoinFaction(player, factionId)
+		return success, displayNameOrError, levelRank
+
+	elseif action == "Marine" then
+		local success, displayNameOrError, levelRank = Server.FactionService.JoinFaction(player, "Marine")
+		return success, displayNameOrError, levelRank
+
+	elseif action == "Pirate" then
+		local success, displayNameOrError, levelRank = Server.FactionService.JoinFaction(player, "Pirate")
+		return success, displayNameOrError, levelRank
+
+	elseif action == "Revolutionary" then
+		local success, displayNameOrError, levelRank = Server.FactionService.JoinFaction(player, "Revolutionary")
+		return success, displayNameOrError, levelRank
+
+	elseif action == "Civilian" then
+		local success, message = Server.FactionService.LeaveFaction(player)
+		return success, message
+
+	elseif action == "CrewCreator" then
+		return true, "Crew creator opened"
+	end
+
+	return false, "Unknown action"
+end
+
+local function initializeAllNPCs()
+	local npcFolder = workspace:WaitForChild("NPCDialogue")
+	for _, npc in pairs(npcFolder:GetChildren()) do
+		initializeNPC(npc)
+	end
+
+	npcFolder.ChildAdded:Connect(initializeNPC)
+end
+
+Network:bindFunction('Dialogue', function(player, NPC)
+	return DialogueService.GetDialogue(player, NPC)
+end)
+
+Network:bindFunction('DialogueAction', function(player, action, data)
+	return DialogueService.ProcessAction(player, action, data)
+end)
+
+initializeAllNPCs()
+
+return DialogueService

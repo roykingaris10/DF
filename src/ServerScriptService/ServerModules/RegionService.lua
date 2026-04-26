@@ -1,0 +1,156 @@
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local RegionService = {
+	playerRegions = {},
+	regionParts = {},
+	checkInterval = 0.5,
+}
+
+local function isPointInPart(point, part)
+	local relative = part.CFrame:PointToObjectSpace(point)
+	local size = part.Size / 2
+	return math.abs(relative.X) <= size.X 
+		and math.abs(relative.Y) <= size.Y 
+		and math.abs(relative.Z) <= size.Z
+end
+
+local function getRegionAtPosition(position)
+	local priorityOrder = {"Special", "Minor", "Major"}
+
+	for _, regionType in ipairs(priorityOrder) do
+		local regions = RegionService.regionParts[regionType]
+		if regions then
+			for regionName, part in pairs(regions) do
+				if isPointInPart(position, part) then
+					return regionName, regionType
+				end
+			end
+		end
+	end
+	return nil, nil
+end
+
+local function loadRegionParts()
+	local regionsFolder = workspace:FindFirstChild("Regions")
+	if not regionsFolder then 
+		warn("[RegionService] No Regions folder found in workspace")
+		return 
+	end
+
+	for _, typeFolder in pairs(regionsFolder:GetChildren()) do
+		if typeFolder:IsA("Folder") then
+			RegionService.regionParts[typeFolder.Name] = {}
+			for _, regionPart in pairs(typeFolder:GetChildren()) do
+				if regionPart:IsA("BasePart") then
+					regionPart.Transparency = 1
+					regionPart.CanCollide = false
+					RegionService.regionParts[typeFolder.Name][regionPart.Name] = regionPart
+				end
+			end
+		end
+	end
+end
+
+local function checkPlayerRegion(player)
+	local character = player.Character
+	if not character then return end
+
+	local rootPart = character:FindFirstChild("HumanoidRootPart")
+	if not rootPart then return end
+
+	local regionName, regionType = getRegionAtPosition(rootPart.Position)
+	local currentData = RegionService.playerRegions[player.UserId]
+	local currentRegion = currentData and currentData.region or nil
+
+	if regionName ~= currentRegion then
+		local oldRegion = currentRegion
+		local oldType = currentData and currentData.regionType or nil
+
+		if regionName then
+			RegionService.playerRegions[player.UserId] = {
+				region = regionName,
+				regionType = regionType,
+				enteredAt = tick(),
+			}
+			player:SetAttribute("CurrentRegion", regionName)
+			player:SetAttribute("CurrentRegionType", regionType)
+		else
+			RegionService.playerRegions[player.UserId] = nil
+			player:SetAttribute("CurrentRegion", nil)
+			player:SetAttribute("CurrentRegionType", nil)
+		end
+
+		RegionService:OnRegionChanged(player, oldRegion, oldType, regionName, regionType)
+	end
+end
+
+function RegionService:OnRegionChanged(player, oldRegion, oldType, newRegion, newType)
+	if newRegion then
+		print(string.format("[RegionService] %s entered %s (%s)", player.Name, newRegion, newType))
+	elseif oldRegion then
+		print(string.format("[RegionService] %s left %s (%s)", player.Name, oldRegion, oldType))
+	end
+end
+
+function RegionService:GetPlayerRegion(player)
+	local data = self.playerRegions[player.UserId]
+	if data then
+		return data.region, data.regionType
+	end
+	return nil, nil
+end
+
+function RegionService:GetPlayersInRegion(regionName)
+	local playersInRegion = {}
+	for userId, data in pairs(self.playerRegions) do
+		if data.region == regionName then
+			local player = Players:GetPlayerByUserId(userId)
+			if player then
+				table.insert(playersInRegion, player)
+			end
+		end
+	end
+	return playersInRegion
+end
+
+function RegionService:IsPlayerInRegion(player, regionName)
+	local data = self.playerRegions[player.UserId]
+	return data and data.region == regionName
+end
+
+function RegionService:IsPlayerInRegionType(player, regionType)
+	local data = self.playerRegions[player.UserId]
+	return data and data.regionType == regionType
+end
+
+function RegionService:Init()
+	loadRegionParts()
+
+	Players.PlayerAdded:Connect(function(player)
+		player.CharacterAdded:Connect(function()
+			task.wait(0.5)
+			checkPlayerRegion(player)
+		end)
+	end)
+
+	Players.PlayerRemoving:Connect(function(player)
+		RegionService.playerRegions[player.UserId] = nil
+	end)
+
+	local accumulator = 0
+	RunService.Heartbeat:Connect(function(dt)
+		accumulator += dt
+		if accumulator >= RegionService.checkInterval then
+			accumulator = 0
+			for _, player in pairs(Players:GetPlayers()) do
+				checkPlayerRegion(player)
+			end
+		end
+	end)
+end
+
+RegionService:Init()
+
+return RegionService
