@@ -44,6 +44,40 @@ end
 
 local RegionConfig = require(ReplicatedStorage:WaitForChild("Kits"):WaitForChild("Nodes"):WaitForChild("Data"):WaitForChild("RegionConfig"))
 
+local function registerRegionPart(typeName, part)
+	if not part:IsA("BasePart") then
+		return
+	end
+	if not RegionConfig:GetRegion(typeName, part.Name) then
+		warn(("[RegionService] No config for %s/%q — check spelling/case in RegionConfig"):format(typeName, part.Name))
+	end
+	part.Transparency = 1
+	part.CanCollide = false
+	RegionService.regionParts[typeName] = RegionService.regionParts[typeName] or {}
+	RegionService.regionParts[typeName][part.Name] = part
+end
+
+local function unregisterRegionPart(typeName, part)
+	if RegionService.regionParts[typeName] then
+		RegionService.regionParts[typeName][part.Name] = nil
+	end
+end
+
+local function watchTypeFolder(typeFolder)
+	RegionService.regionParts[typeFolder.Name] = RegionService.regionParts[typeFolder.Name] or {}
+	for _, child in ipairs(typeFolder:GetChildren()) do
+		registerRegionPart(typeFolder.Name, child)
+	end
+	typeFolder.ChildAdded:Connect(function(child)
+		registerRegionPart(typeFolder.Name, child)
+	end)
+	typeFolder.ChildRemoved:Connect(function(child)
+		unregisterRegionPart(typeFolder.Name, child)
+	end)
+end
+
+-- Live cache: region parts that arrive after the service initializes
+-- (replication, runtime spawning, edits in Studio) get picked up too.
 local function loadRegionParts()
 	local regionsFolder = workspace:FindFirstChild("Regions")
 	if not regionsFolder then
@@ -51,23 +85,17 @@ local function loadRegionParts()
 		return
 	end
 
-	for _, typeFolder in pairs(regionsFolder:GetChildren()) do
+	for _, typeFolder in ipairs(regionsFolder:GetChildren()) do
 		if typeFolder:IsA("Folder") then
-			RegionService.regionParts[typeFolder.Name] = {}
-			for _, regionPart in pairs(typeFolder:GetChildren()) do
-				if not regionPart:IsA("BasePart") then
-					warn(("[RegionService] %s/%s is %s, expected BasePart — skipping"):format(typeFolder.Name, regionPart.Name, regionPart.ClassName))
-					continue
-				end
-				if not RegionConfig:GetRegion(typeFolder.Name, regionPart.Name) then
-					warn(("[RegionService] No config for %s/%q — check spelling/case in RegionConfig"):format(typeFolder.Name, regionPart.Name))
-				end
-				regionPart.Transparency = 1
-				regionPart.CanCollide = false
-				RegionService.regionParts[typeFolder.Name][regionPart.Name] = regionPart
-			end
+			watchTypeFolder(typeFolder)
 		end
 	end
+
+	regionsFolder.ChildAdded:Connect(function(child)
+		if child:IsA("Folder") then
+			watchTypeFolder(child)
+		end
+	end)
 end
 
 local function checkPlayerRegion(player)

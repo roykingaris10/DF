@@ -43,6 +43,7 @@ return function(Client)
 	local regionMarker = nil
 	local heartbeatConn = nil
 	local tickMarkPool = {}
+	local regionConnections = {}
 
 	local function normalizeAngle(angle)
 		while angle > 180 do angle = angle - 360 end
@@ -113,36 +114,71 @@ return function(Client)
 		return math.sqrt(dx * dx + dz * dz)
 	end
 
-	local function cacheRegionParts()
+	local function tryAddRegionPart(typeName, part)
+		if not part:IsA("BasePart") then
+			return
+		end
+		local config = RegionConfig:GetRegion(typeName, part.Name)
+		if not config then
+			warn(("[CompassController] No config for %s/%q — check spelling/case in RegionConfig"):format(typeName, part.Name))
+			return
+		end
+		-- Type-prefixed key prevents same-named regions across types from
+		-- silently overwriting each other.
+		local key = typeName .. "/" .. part.Name
+		regionParts[key] = {
+			name = part.Name,
+			part = part,
+			config = config,
+			regionType = typeName,
+		}
+	end
+
+	local function removeRegionPart(typeName, part)
+		regionParts[typeName .. "/" .. part.Name] = nil
+	end
+
+	local function watchTypeFolder(typeName, typeFolder)
+		for _, part in ipairs(typeFolder:GetChildren()) do
+			tryAddRegionPart(typeName, part)
+		end
+		regionConnections[typeName .. ":added"] = typeFolder.ChildAdded:Connect(function(child)
+			tryAddRegionPart(typeName, child)
+		end)
+		regionConnections[typeName .. ":removed"] = typeFolder.ChildRemoved:Connect(function(child)
+			removeRegionPart(typeName, child)
+		end)
+	end
+
+	-- Build the cache and keep it live. Region parts can replicate after
+	-- the controller initializes, especially in large places — listening
+	-- for ChildAdded prevents a part from being permanently invisible to
+	-- the compass just because it arrived a frame late.
+	local function setupRegionCache()
 		regionParts = {}
-		local regionsFolder = workspace:FindFirstChild("Regions")
-		if not regionsFolder then return end
+		for _, conn in pairs(regionConnections) do
+			conn:Disconnect()
+		end
+		regionConnections = {}
+
+		local regionsFolder = workspace:WaitForChild("Regions", 10)
+		if not regionsFolder then
+			warn("[CompassController] No Regions folder in workspace")
+			return
+		end
 
 		for _, typeName in ipairs(REGION_PRIORITY) do
 			local typeFolder = regionsFolder:FindFirstChild(typeName)
 			if typeFolder then
-				for _, part in ipairs(typeFolder:GetChildren()) do
-					if not part:IsA("BasePart") then
-						warn(("[CompassController] %s/%s is %s, expected BasePart — skipping"):format(typeName, part.Name, part.ClassName))
-						continue
-					end
-					local config = RegionConfig:GetRegion(typeName, part.Name)
-					if not config then
-						warn(("[CompassController] No config for %s/%q — check spelling/case in RegionConfig"):format(typeName, part.Name))
-						continue
-					end
-					-- Type-prefixed key prevents same-named regions across
-					-- types from silently overwriting each other.
-					local key = typeName .. "/" .. part.Name
-					regionParts[key] = {
-						name = part.Name,
-						part = part,
-						config = config,
-						regionType = typeName,
-					}
-				end
+				watchTypeFolder(typeName, typeFolder)
 			end
 		end
+
+		regionConnections["regions:added"] = regionsFolder.ChildAdded:Connect(function(child)
+			if child:IsA("Folder") and table.find(REGION_PRIORITY, child.Name) then
+				watchTypeFolder(child.Name, child)
+			end
+		end)
 	end
 
 	local function setupDirectionLabels()
@@ -437,7 +473,7 @@ return function(Client)
 		ScrollingFrame.ScrollingEnabled = false
 		ScrollingFrame.ScrollBarThickness = 0
 
-		cacheRegionParts()
+		setupRegionCache()
 		setupDirectionLabels()
 		setupTickMarks()
 		createRegionMarker()
@@ -464,6 +500,11 @@ return function(Client)
 			tick:Destroy()
 		end
 		tickMarkPool = {}
+		for _, conn in pairs(regionConnections) do
+			conn:Disconnect()
+		end
+		regionConnections = {}
+		regionParts = {}
 	end
 
 	return CompassController
