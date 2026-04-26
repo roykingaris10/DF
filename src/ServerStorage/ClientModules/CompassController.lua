@@ -31,6 +31,8 @@ return function(Client)
 	local EDGE_SCALE = 0.75
 	local CENTER_ALPHA = 1
 	local EDGE_ALPHA = 0.3
+	local DEFAULT_VERTICAL_LENIENCY = 500
+	local REGION_PRIORITY = {"Special", "Minor", "Major"}
 
 	-- State
 	local currentHeading = 0
@@ -40,6 +42,7 @@ return function(Client)
 	local currentRegionName = nil
 	local regionMarker = nil
 	local heartbeatConn = nil
+	local tickMarkPool = {}
 
 	local function normalizeAngle(angle)
 		while angle > 180 do angle = angle - 360 end
@@ -78,31 +81,36 @@ return function(Client)
 		return root and root.Position or nil
 	end
 
-	-- Check if point is inside a region box
+	-- Horizontal-first containment: matches RegionService server logic.
+	-- Y is generous by default so regions on hills/elevated terrain still detect.
+	-- Set the part's "Bounded3D" attribute to require strict 3D containment,
+	-- or "VerticalLeniency" (number) to override the default tolerance.
 	local function isPointInPart(point, part)
 		local relative = part.CFrame:PointToObjectSpace(point)
 		local size = part.Size / 2
-		return math.abs(relative.X) <= size.X 
-			and math.abs(relative.Y) <= size.Y 
-			and math.abs(relative.Z) <= size.Z
+
+		if math.abs(relative.X) > size.X or math.abs(relative.Z) > size.Z then
+			return false
+		end
+
+		if part:GetAttribute("Bounded3D") then
+			return math.abs(relative.Y) <= size.Y
+		end
+
+		local leniency = part:GetAttribute("VerticalLeniency") or DEFAULT_VERTICAL_LENIENCY
+		return math.abs(relative.Y) <= size.Y + leniency
 	end
 
-	-- Get distance to nearest edge of box (returns 0 if inside)
+	-- Horizontal distance (XZ plane) to the box outline. Returns 0 if inside in XZ.
+	-- Compass cares about heading + ground-plane distance, not vertical separation.
 	local function getDistanceToBox(playerPos, part)
 		local relative = part.CFrame:PointToObjectSpace(playerPos)
 		local size = part.Size / 2
 
-		if math.abs(relative.X) <= size.X and math.abs(relative.Y) <= size.Y and math.abs(relative.Z) <= size.Z then
-			return 0
-		end
+		local dx = math.max(0, math.abs(relative.X) - size.X)
+		local dz = math.max(0, math.abs(relative.Z) - size.Z)
 
-		local closestPoint = Vector3.new(
-			math.clamp(relative.X, -size.X, size.X),
-			math.clamp(relative.Y, -size.Y, size.Y),
-			math.clamp(relative.Z, -size.Z, size.Z)
-		)
-
-		return (relative - closestPoint).Magnitude
+		return math.sqrt(dx * dx + dz * dz)
 	end
 
 	local function cacheRegionParts()
@@ -110,14 +118,18 @@ return function(Client)
 		local regionsFolder = workspace:FindFirstChild("Regions")
 		if not regionsFolder then return end
 
-		for _, typeName in ipairs({"Major", "Minor", "Special"}) do
+		for _, typeName in ipairs(REGION_PRIORITY) do
 			local typeFolder = regionsFolder:FindFirstChild(typeName)
 			if typeFolder then
 				for _, part in ipairs(typeFolder:GetChildren()) do
 					if part:IsA("BasePart") then
 						local config = RegionConfig:GetRegion(typeName, part.Name)
 						if config then
-							regionParts[part.Name] = {
+							-- Type-prefixed key prevents same-named regions across
+							-- types from silently overwriting each other.
+							local key = typeName .. "/" .. part.Name
+							regionParts[key] = {
+								name = part.Name,
 								part = part,
 								config = config,
 								regionType = typeName,
@@ -212,34 +224,50 @@ return function(Client)
 			end
 		end
 
-		-- Update tick marks (only in-between ones, skip 0/45/90/135/180/225/270/315)
-		for _, child in ipairs(ScrollingFrame:GetChildren()) do
-			if child.Name == "TickMark" then
-				child:Destroy()
-			end
-		end
-
+		-- Reposition pooled tick marks instead of recreating every frame.
+		-- Skip degrees that have direction labels (every 45°).
+		local tickIndex = 0
 		for deg = 0, 359, 15 do
-			-- Skip degrees that have direction labels (cardinal and intercardinal)
 			if deg % 45 == 0 then
 				continue
 			end
 
 			local diff = normalizeAngle(deg - currentHeading)
 			if math.abs(diff) <= COMPASS_HALF_WIDTH then
+				tickIndex = tickIndex + 1
+				local tick = tickMarkPool[tickIndex]
 				local posX = centerX + (diff * pixelsPerDegree)
 				local t = math.abs(diff) / COMPASS_HALF_WIDTH
-
-				local tick = Instance.new("Frame")
-				tick.Name = "TickMark"
-				tick.AnchorPoint = Vector2.new(0.5, 0)
 				tick.Position = UDim2.new(0, posX, 0.5, 0)
-				tick.BorderSizePixel = 0
-				tick.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 				tick.BackgroundTransparency = t * 0.7
-				tick.Size = UDim2.new(0, 1, 0.12, 0)
-				tick.Parent = ScrollingFrame
+				tick.Visible = true
 			end
+		end
+
+		for i = tickIndex + 1, #tickMarkPool do
+			tickMarkPool[i].Visible = false
+		end
+	end
+
+	local function setupTickMarks()
+		for _, child in ipairs(ScrollingFrame:GetChildren()) do
+			if child.Name == "TickMark" then
+				child:Destroy()
+			end
+		end
+		tickMarkPool = {}
+
+		-- 16 non-cardinal slots across 360° at 15° spacing.
+		for i = 1, 16 do
+			local tick = Instance.new("Frame")
+			tick.Name = "TickMark"
+			tick.AnchorPoint = Vector2.new(0.5, 0)
+			tick.BorderSizePixel = 0
+			tick.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+			tick.Size = UDim2.new(0, 1, 0.12, 0)
+			tick.Visible = false
+			tick.Parent = ScrollingFrame
+			tickMarkPool[i] = tick
 		end
 	end
 
@@ -254,22 +282,27 @@ return function(Client)
 			return
 		end
 
-		-- Check what region player is currently inside
+		-- Determine current region in priority order (Special > Minor > Major)
+		-- so the client matches RegionService's server-side resolution.
 		currentRegionName = nil
-		for regionName, data in pairs(regionParts) do
-			if isPointInPart(playerPos, data.part) then
-				currentRegionName = regionName
-				break
+		local currentRegionKey = nil
+		for _, typeName in ipairs(REGION_PRIORITY) do
+			for key, data in pairs(regionParts) do
+				if data.regionType == typeName and isPointInPart(playerPos, data.part) then
+					currentRegionName = data.name
+					currentRegionKey = key
+					break
+				end
 			end
+			if currentRegionKey then break end
 		end
 
-		-- Find closest region that player is NOT inside
+		-- Find closest region we're not inside (used for the directional marker)
 		local closest = nil
 		local closestDist = math.huge
 
-		for regionName, data in pairs(regionParts) do
-			-- Skip the region we're currently in
-			if regionName == currentRegionName then
+		for key, data in pairs(regionParts) do
+			if key == currentRegionKey then
 				continue
 			end
 
@@ -278,8 +311,8 @@ return function(Client)
 			if dist < closestDist and dist <= REGION_DETECTION_RANGE then
 				closestDist = dist
 				closest = {
-					name = regionName,
-					displayName = data.config.DisplayName or regionName,
+					name = data.name,
+					displayName = data.config.DisplayName or data.name,
 					distance = dist,
 					part = data.part,
 					position = data.part.Position,
@@ -402,6 +435,7 @@ return function(Client)
 
 		cacheRegionParts()
 		setupDirectionLabels()
+		setupTickMarks()
 		createRegionMarker()
 
 		currentHeading = getCameraHeading()
@@ -422,6 +456,10 @@ return function(Client)
 			regionMarker:Destroy()
 			regionMarker = nil
 		end
+		for _, tick in ipairs(tickMarkPool) do
+			tick:Destroy()
+		end
+		tickMarkPool = {}
 	end
 
 	return CompassController

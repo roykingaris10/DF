@@ -8,12 +8,22 @@ local RegionService = {
 	checkInterval = 0.5,
 }
 
+local DEFAULT_VERTICAL_LENIENCY = 500
+
 local function isPointInPart(point, part)
 	local relative = part.CFrame:PointToObjectSpace(point)
 	local size = part.Size / 2
-	return math.abs(relative.X) <= size.X 
-		and math.abs(relative.Y) <= size.Y 
-		and math.abs(relative.Z) <= size.Z
+
+	if math.abs(relative.X) > size.X or math.abs(relative.Z) > size.Z then
+		return false
+	end
+
+	if part:GetAttribute("Bounded3D") then
+		return math.abs(relative.Y) <= size.Y
+	end
+
+	local leniency = part:GetAttribute("VerticalLeniency") or DEFAULT_VERTICAL_LENIENCY
+	return math.abs(relative.Y) <= size.Y + leniency
 end
 
 local function getRegionAtPosition(position)
