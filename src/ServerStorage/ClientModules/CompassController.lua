@@ -122,20 +122,24 @@ return function(Client)
 			local typeFolder = regionsFolder:FindFirstChild(typeName)
 			if typeFolder then
 				for _, part in ipairs(typeFolder:GetChildren()) do
-					if part:IsA("BasePart") then
-						local config = RegionConfig:GetRegion(typeName, part.Name)
-						if config then
-							-- Type-prefixed key prevents same-named regions across
-							-- types from silently overwriting each other.
-							local key = typeName .. "/" .. part.Name
-							regionParts[key] = {
-								name = part.Name,
-								part = part,
-								config = config,
-								regionType = typeName,
-							}
-						end
+					if not part:IsA("BasePart") then
+						warn(("[CompassController] %s/%s is %s, expected BasePart — skipping"):format(typeName, part.Name, part.ClassName))
+						continue
 					end
+					local config = RegionConfig:GetRegion(typeName, part.Name)
+					if not config then
+						warn(("[CompassController] No config for %s/%q — check spelling/case in RegionConfig"):format(typeName, part.Name))
+						continue
+					end
+					-- Type-prefixed key prevents same-named regions across
+					-- types from silently overwriting each other.
+					local key = typeName .. "/" .. part.Name
+					regionParts[key] = {
+						name = part.Name,
+						part = part,
+						config = config,
+						regionType = typeName,
+					}
 				end
 			end
 		end

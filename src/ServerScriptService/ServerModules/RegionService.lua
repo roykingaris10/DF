@@ -42,22 +42,29 @@ local function getRegionAtPosition(position)
 	return nil, nil
 end
 
+local RegionConfig = require(ReplicatedStorage:WaitForChild("Kits"):WaitForChild("Nodes"):WaitForChild("Data"):WaitForChild("RegionConfig"))
+
 local function loadRegionParts()
 	local regionsFolder = workspace:FindFirstChild("Regions")
-	if not regionsFolder then 
+	if not regionsFolder then
 		warn("[RegionService] No Regions folder found in workspace")
-		return 
+		return
 	end
 
 	for _, typeFolder in pairs(regionsFolder:GetChildren()) do
 		if typeFolder:IsA("Folder") then
 			RegionService.regionParts[typeFolder.Name] = {}
 			for _, regionPart in pairs(typeFolder:GetChildren()) do
-				if regionPart:IsA("BasePart") then
-					regionPart.Transparency = 1
-					regionPart.CanCollide = false
-					RegionService.regionParts[typeFolder.Name][regionPart.Name] = regionPart
+				if not regionPart:IsA("BasePart") then
+					warn(("[RegionService] %s/%s is %s, expected BasePart — skipping"):format(typeFolder.Name, regionPart.Name, regionPart.ClassName))
+					continue
 				end
+				if not RegionConfig:GetRegion(typeFolder.Name, regionPart.Name) then
+					warn(("[RegionService] No config for %s/%q — check spelling/case in RegionConfig"):format(typeFolder.Name, regionPart.Name))
+				end
+				regionPart.Transparency = 1
+				regionPart.CanCollide = false
+				RegionService.regionParts[typeFolder.Name][regionPart.Name] = regionPart
 			end
 		end
 	end
