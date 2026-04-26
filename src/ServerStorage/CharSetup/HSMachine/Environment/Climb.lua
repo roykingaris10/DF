@@ -136,6 +136,8 @@ return function(Client)
 			pcall(function() session.clingAnim:Stop(0.15) end)
 		end
 
+		print(("[Climb] release(%s)"):format(reason or "?"))
+
 		-- Cooldown to prevent immediate regrip on the same wall during a wall-jump.
 		if reason == "walljump" and session.wallPart then
 			regripCooldownPart = session.wallPart
@@ -152,25 +154,34 @@ return function(Client)
 		if not Entity or not Entity.Character then return false end
 		ensureStamina(Entity)
 
-		if Entity.ScalingStamina < StaminaCfg.MinToCling then return false end
-		if combatLocked(Entity) then return false end
+		if Entity.ScalingStamina < StaminaCfg.MinToCling then
+			print("[Climb] start refused: stamina too low")
+			return false
+		end
+		if combatLocked(Entity) then
+			print("[Climb] start refused: combat locked")
+			return false
+		end
 
 		local character = Entity.Character
 		local hrp = character:FindFirstChild("HumanoidRootPart")
-		if not hrp then return false end
+		local humanoid = character:FindFirstChildOfClass("Humanoid")
+		if not hrp or not humanoid then return false end
 
 		-- Position the character clinging to the wall: face into the wall,
 		-- offset back by ClingOffset so we're not embedded in the part.
 		local intoWall = -wallInfo.normal
 		local clingPos = wallInfo.point + wallInfo.normal * Cfg.ClingOffset
-			-- Keep current Y; we'll let the user move vertically.
 		clingPos = Vector3.new(clingPos.X, hrp.Position.Y, clingPos.Z)
 		local clingCFrame = CFrame.new(clingPos, clingPos + intoWall)
 
-		-- Anchor briefly while we attach so the snap doesn't get fought by
-		-- physics. Released on first climb tick.
+		-- Anchor HRP for the entire climb. We move via CFrame each frame; this
+		-- avoids fighting gravity, Humanoid auto-rotation, and collision
+		-- resolution. AutoRotate gets disabled too as a belt-and-suspenders.
 		hrp.Anchored = true
+		hrp.AssemblyLinearVelocity = Vector3.zero
 		hrp.CFrame = clingCFrame
+		humanoid.AutoRotate = false
 
 		if Entity.MovementHandler then
 			Entity.MovementHandler:SetAbsolute("Climb", {
@@ -196,27 +207,31 @@ return function(Client)
 		local trove = Trove.new()
 		session = {
 			character = character,
+			humanoid = humanoid,
 			wallPart = wallInfo.part,
 			wallNormal = wallInfo.normal,
 			clingAnim = clingAnim,
 			trove = trove,
 			lastProgressTime = tick(),
 			lastPos = hrp.Position,
-			attachedAt = tick(),
 		}
+
+		-- Restore AutoRotate when the climb session ends.
+		trove:Add(function()
+			if humanoid and humanoid.Parent then
+				humanoid.AutoRotate = true
+			end
+		end)
+
+		print(("[Climb] start: wall=%s normal=%s"):format(wallInfo.part:GetFullName(), tostring(wallInfo.normal)))
 
 		trove:Connect(RunService.Heartbeat, function(dt)
 			if not session then return end
 			if not character or not character.Parent then release("dead") return end
 			if combatLocked(Entity) then release("combat") return end
 
-			-- After AttachTime, hand control back from the anchor.
-			if hrp.Anchored and tick() - session.attachedAt >= Cfg.AttachTime then
-				hrp.Anchored = false
-			end
-
-			-- Re-probe the wall: if we've drifted off (e.g., end of the wall,
-			-- door, gap), drop.
+			-- Re-probe each tick so leaving the wall (corner, doorway, end of
+			-- a wall section) auto-releases the climb.
 			local probe = probeWall(character)
 			if not probe or not isPartClimbable(probe.part) then
 				release("nowall") return
@@ -224,7 +239,7 @@ return function(Client)
 			session.wallNormal = probe.normal
 			session.wallPart = probe.part
 
-			-- Drain stamina based on whether we're actively moving.
+			-- Drain stamina based on whether the player is actively moving.
 			local upInput, sideInput = readMoveInput()
 			local moving = upInput ~= 0 or sideInput ~= 0
 			local drain = moving and StaminaCfg.ClimbDrainPerSecond or StaminaCfg.ClingDrainPerSecond
@@ -233,35 +248,25 @@ return function(Client)
 				release("exhausted") return
 			end
 
-			-- Compute movement along the wall plane.
+			-- Build wall-plane axes and step the position. We're CFrame-driven
+			-- and HRP stays anchored, so this never fights physics.
 			local wallUp, wallRight = buildClimbBasis(session.wallNormal)
 			local verticalSpeed = scaleVerticalSpeed(upInput)
 			local sideSpeed = sideInput * Cfg.SidewaysSpeed
-			local desired = wallUp * verticalSpeed + wallRight * sideSpeed
+			local stepDelta = (wallUp * verticalSpeed + wallRight * sideSpeed) * dt
 
-			if hrp.Anchored then
-				-- During attach window, slide via direct CFrame.
-				hrp.CFrame = hrp.CFrame + desired * dt
-			else
-				-- Hold position against the wall via direct velocity assignment.
-				-- Cancels gravity (we're clinging), sets desired wall-plane velocity.
-				hrp.AssemblyLinearVelocity = desired
-			end
-
-			-- Re-snap to maintain ClingOffset along the wall normal.
-			local toWall = probe.point - hrp.Position
+			-- New target position: previous position + step, then snapped to
+			-- the wall normal so we maintain ClingOffset distance.
+			local newPos = hrp.Position + stepDelta
+			local toWall = probe.point - newPos
 			local distanceAlongNormal = toWall:Dot(session.wallNormal)
-			local desiredOffset = -distanceAlongNormal + Cfg.ClingOffset
-			if math.abs(desiredOffset) > 0.05 then
-				hrp.CFrame = hrp.CFrame + session.wallNormal * desiredOffset
-			end
-			-- Face into the wall.
-			local intoWall2 = -session.wallNormal
-			hrp.CFrame = CFrame.new(hrp.Position, hrp.Position + intoWall2)
+			newPos = newPos + session.wallNormal * (-distanceAlongNormal + Cfg.ClingOffset)
 
-			-- Stuck detection: if the user has been holding input but hasn't
-			-- moved meaningfully, drop after a timeout (likely up against a
-			-- ceiling or wall edge).
+			local intoWall2 = -session.wallNormal
+			hrp.CFrame = CFrame.new(newPos, newPos + intoWall2)
+
+			-- Stuck detection: holding input but not moving means we're against
+			-- a ceiling or the wall ends here — drop after a timeout.
 			if moving then
 				local progress = (hrp.Position - session.lastPos).Magnitude
 				if progress > 0.15 then
@@ -283,18 +288,34 @@ return function(Client)
 
 	State["StartClimb"] = function(self, Params)
 		local Entity = getEntity()
-		if not Entity or not Entity.Character then return false end
+		if not Entity or not Entity.Character then
+			print("[Climb] StartClimb: no Entity/Character")
+			return false
+		end
 		ensureStamina(Entity)
 
-		if session then return false end  -- already climbing
-		if combatLocked(Entity) then return false end
-		if Entity.ScalingStamina < StaminaCfg.MinToCling then return false end
+		if session then
+			print("[Climb] StartClimb: already in a climb session")
+			return false
+		end
+		if combatLocked(Entity) then
+			print("[Climb] StartClimb: combat-locked")
+			return false
+		end
+		if Entity.ScalingStamina < StaminaCfg.MinToCling then
+			print(("[Climb] StartClimb: stamina %.1f < %d"):format(Entity.ScalingStamina, StaminaCfg.MinToCling))
+			return false
+		end
 
 		local probe = probeWall(Entity.Character)
-		if not probe then return false end
+		if not probe then
+			print("[Climb] StartClimb: no climbable wall in front")
+			return false
+		end
 
 		-- Honor regrip cooldown after a wall-jump on the same wall.
 		if regripCooldownPart == probe.part and tick() < regripCooldownUntil then
+			print("[Climb] StartClimb: regrip cooldown active on this wall")
 			return false
 		end
 
@@ -317,16 +338,18 @@ return function(Client)
 		end
 		Entity.ScalingStamina = math.max(0, Entity.ScalingStamina - StaminaCfg.WallJumpCost)
 
-		-- Pick an away-from-wall jump direction biased by player input. If no
-		-- side input, push straight off the wall.
+		-- Compute impulse before release (we still need session.wallNormal).
+		-- Bias the away-direction by side input so the player can chain
+		-- wall-jumps sideways across a wall.
 		local _, sideInput = readMoveInput()
 		local wallUp, wallRight = buildClimbBasis(session.wallNormal)
 		local awayDir = (session.wallNormal + wallRight * sideInput * 0.4).Unit
 		local impulse = awayDir * WallJumpCfg.HorizontalImpulse + wallUp * WallJumpCfg.VerticalImpulse
 
-		hrp.AssemblyLinearVelocity = impulse
-
+		-- Release first (un-anchors HRP); only then can AssemblyLinearVelocity
+		-- actually take effect.
 		release("walljump")
+		hrp.AssemblyLinearVelocity = impulse
 
 		if Entity.AnimHandler and Entity.AnimHandler.Fetch then
 			local anim
