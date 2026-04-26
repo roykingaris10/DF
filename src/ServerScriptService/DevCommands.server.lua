@@ -63,15 +63,6 @@ local function teleport(player, regionName)
 	return ("Teleported to %s/%s at %.0f, %.0f, %.0f"):format(typeName, part.Name, target.X, target.Y, target.Z)
 end
 
-local function reply(textSource, text)
-	-- Prefix the message so it shows up clearly in the player's chat
-	local channel = TextChatService.TextChannels:FindFirstChild("RBXGeneral")
-	if channel then
-		channel:DisplaySystemMessage("[/tp] " .. text)
-	end
-	print("[/tp] " .. text)
-end
-
 local cmd = Instance.new("TextChatCommand")
 cmd.Name = "DevTeleportCommand"
 cmd.PrimaryAlias = "/tp"
@@ -85,7 +76,7 @@ cmd.Triggered:Connect(function(textSource, message)
 	-- Strip the command itself off the front to get the argument.
 	local arg = message:match("^/%S+%s*(.-)%s*$") or ""
 	local result = teleport(player, arg)
-	reply(textSource, result)
+	print("[/tp] " .. result)
 end)
 
 print("[DevCommands] /tp registered (Studio-only). Usage: /tp <RegionName> | /tp")
