@@ -50,6 +50,9 @@ return function(Client)
 	end
 
 	-- Look forward for a climbable wall whose normal is roughly vertical.
+	-- Casts a small cone (center + 4 chest-level offsets) so a thin part or
+	-- a slight rotation gap can still hold the climb. Returns the closest
+	-- climbable hit.
 	local function probeWall(character)
 		local hrp = character:FindFirstChild("HumanoidRootPart")
 		if not hrp then return nil end
@@ -57,21 +60,36 @@ return function(Client)
 		local rp = buildRaycastParams(character)
 		local origin = hrp.Position
 		local forward = hrp.CFrame.LookVector
-		local hit = workspace:Raycast(origin, forward * Cfg.GripRange, rp)
-		if not hit then return nil end
-		if not isPartClimbable(hit.Instance) then return nil end
+		local right = hrp.CFrame.RightVector
+		local up = hrp.CFrame.UpVector
 
-		-- Wall normal must be mostly horizontal (i.e., the surface is vertical).
-		-- WallVerticalThreshold is the minimum |XZ-component|; a perfectly
-		-- vertical wall has normal.Y ≈ 0, |XZ| ≈ 1.
-		local horizontalMag = math.sqrt(hit.Normal.X * hit.Normal.X + hit.Normal.Z * hit.Normal.Z)
-		if horizontalMag < Cfg.WallVerticalThreshold then return nil end
-
-		return {
-			point = hit.Position,
-			normal = hit.Normal,
-			part = hit.Instance,
+		local offsets = {
+			Vector3.zero,
+			right * 0.6,
+			-right * 0.6,
+			up * 0.6,
+			-up * 0.6,
 		}
+
+		local best
+		for _, offset in ipairs(offsets) do
+			local hit = workspace:Raycast(origin + offset, forward * Cfg.GripRange, rp)
+			if hit and isPartClimbable(hit.Instance) then
+				local horizontalMag = math.sqrt(hit.Normal.X * hit.Normal.X + hit.Normal.Z * hit.Normal.Z)
+				if horizontalMag >= Cfg.WallVerticalThreshold then
+					if not best or hit.Distance < best.distance then
+						best = {
+							point = hit.Position,
+							normal = hit.Normal,
+							part = hit.Instance,
+							distance = hit.Distance,
+						}
+					end
+				end
+			end
+		end
+
+		return best
 	end
 
 	local function combatLocked(Entity)
@@ -214,6 +232,7 @@ return function(Client)
 			trove = trove,
 			lastProgressTime = tick(),
 			lastPos = hrp.Position,
+			missStreak = 0,
 		}
 
 		-- Restore AutoRotate when the climb session ends.
@@ -231,11 +250,25 @@ return function(Client)
 			if combatLocked(Entity) then release("combat") return end
 
 			-- Re-probe each tick so leaving the wall (corner, doorway, end of
-			-- a wall section) auto-releases the climb.
+			-- a wall section) auto-releases the climb. Allow a few consecutive
+			-- misses before giving up — a single missed tick during a snap or
+			-- a thin face shouldn't drop the climb.
 			local probe = probeWall(character)
 			if not probe or not isPartClimbable(probe.part) then
-				release("nowall") return
+				session.missStreak = session.missStreak + 1
+				if session.missStreak == 1 then
+					print(("[Climb] probe miss #%d at %s look=%s"):format(
+						session.missStreak,
+						tostring(hrp.Position),
+						tostring(hrp.CFrame.LookVector)))
+				end
+				if session.missStreak >= 6 then
+					release("nowall") return
+				end
+				-- Hold position and wait for the wall to come back into range.
+				return
 			end
+			session.missStreak = 0
 			session.wallNormal = probe.normal
 			session.wallPart = probe.part
 
