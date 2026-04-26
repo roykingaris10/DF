@@ -13,6 +13,15 @@
     },
     "ServerStorage": {
       "$path": "src/ServerStorage"
+    },
+    "StarterGui": {
+      "$path": "src/StarterGui"
+    },
+    "StarterPlayer": {
+      "$path": "src/StarterPlayer"
+    },
+    "Workspace": {
+      "$path": "src/Workspace"
     }
   }
 }
