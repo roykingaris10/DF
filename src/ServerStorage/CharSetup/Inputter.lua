@@ -34,6 +34,7 @@ return function(Client)
 		Block = {Enum.KeyCode.F};
 		Sprint = {Enum.KeyCode.ButtonR1, Enum.KeyCode.LeftShift};
 		Crouch = {Enum.KeyCode.C};
+		Climb = {Enum.KeyCode.E, Enum.KeyCode.ButtonY};
 		OpenCoreMenu = {Enum.KeyCode.Tab};
 	};
 
@@ -266,15 +267,61 @@ return function(Client)
 		
 		OpenCoreMenu = function(ActionName, Held: boolean, InputObj: InputObject | number)
 			if ActionName ~= "OpenCoreMenu" then return end
-			
+
 			local Character = player.Character;
 			if not Character then return end;
 			if not Held then return end;
 			Client.UISetup:ToggleCoreMenu()
 			return Enum.ContextActionResult.Pass
-		end
-		
+		end;
+
+		-- Toggle wall climbing. Pressing engages a grip if there's a climbable
+		-- wall in front; pressing again releases.
+		Climb = function(ActionName, Held: boolean, InputObj: InputObject | number)
+			if ActionName ~= "Climb" then return end
+			local Character = player.Character
+			if not Character or not Character:IsDescendantOf(workspace.Entities) then return end
+			if not Held then return end
+
+			local Entity = Client.Entity
+			if not Entity then return end
+
+			if Entity.Character and Entity.Character:GetAttribute("Climbing") then
+				Entity.StateMachine:Trigger("Environment", "Release")
+			else
+				Entity.StateMachine:ChangeState("Environment", "Climb")
+				Entity.StateMachine:Trigger("Environment", "StartClimb")
+			end
+			return Enum.ContextActionResult.Pass
+		end;
+
 	};
+
+	-- Jump-driven scaling: while clinging, jump becomes wall-jump (and the
+	-- character is anchored/velocity-driven so Humanoid won't auto-jump).
+	-- Otherwise we try an auto-mantle; if it takes, suppress the default jump
+	-- by setting Humanoid.Jump = false on the next frame.
+	UserInputService.JumpRequest:Connect(function()
+		if not Client.Entity or not Client.Entity.SetupFinished then return end
+		local Character = player.Character
+		if not Character or not Character:IsDescendantOf(workspace.Entities) then return end
+
+		local Entity = Client.Entity
+
+		if Entity.Character and Entity.Character:GetAttribute("Climbing") then
+			Entity.StateMachine:ChangeState("Environment", "Climb")
+			Entity.StateMachine:Trigger("Environment", "WallJump")
+			return
+		end
+
+		Entity.StateMachine:ChangeState("Environment", "Mantle")
+		local mantled = Entity.StateMachine:Trigger("Environment", "TryMantle")
+		if mantled then
+			-- Cancel the default jump that JumpRequest is about to issue.
+			local hum = Character:FindFirstChildOfClass("Humanoid")
+			if hum then hum.Jump = false end
+		end
+	end)
 
 	local function shouldUseUserInputService(actionName)
 		return (actionName == "WallJump")
