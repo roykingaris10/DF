@@ -173,7 +173,8 @@ return function(Client)
 	local function runVault(Entity, target)
 		local character = Entity.Character
 		local hrp = character:FindFirstChild("HumanoidRootPart")
-		if not hrp then return end
+		local humanoid = character:FindFirstChildOfClass("Humanoid")
+		if not hrp or not humanoid then return end
 
 		active = true
 		Entity:SetState("Vaulting", true)
@@ -182,6 +183,26 @@ return function(Client)
 		-- Clear any conflicting velocity (existing dashes etc.).
 		local existing = hrp:FindFirstChild("DashVelocity")
 		if existing then existing:Destroy() end
+
+		-- Lock the Humanoid out of mid-air states for the vault duration.
+		-- The BodyVelocity below makes the Humanoid auto-enter Freefall;
+		-- this game's AnimationData has FreeFalling = 1 (placeholder asset)
+		-- and Jump = 1, so without this lock, the broken default state-anims
+		-- render as "limbs at 45° + ragdoll" even though HRP is upright.
+		-- We force Running so the rig stays in a stable, animated pose, then
+		-- restore the originals after the velocity ends.
+		local stateBlocks = {
+			Enum.HumanoidStateType.Freefall,
+			Enum.HumanoidStateType.Jumping,
+			Enum.HumanoidStateType.FallingDown,
+			Enum.HumanoidStateType.Ragdoll,
+		}
+		local restoreStates = {}
+		for _, st in ipairs(stateBlocks) do
+			restoreStates[st] = humanoid:GetStateEnabled(st)
+			humanoid:SetStateEnabled(st, false)
+		end
+		humanoid:ChangeState(Enum.HumanoidStateType.Running)
 
 		-- Reset accumulated angular velocity and snap upright on the
 		-- horizontal plane. We deliberately don't touch Humanoid.AutoRotate
@@ -239,6 +260,12 @@ return function(Client)
 		task.delay(Cfg.VelocityDuration + 0.05, function()
 			if vaultVel and vaultVel.Parent then vaultVel:Destroy() end
 			if vaultGyro and vaultGyro.Parent then vaultGyro:Destroy() end
+			-- Restore Humanoid state transitions.
+			if humanoid and humanoid.Parent then
+				for state, wasEnabled in pairs(restoreStates) do
+					humanoid:SetStateEnabled(state, wasEnabled)
+				end
+			end
 			active = false
 			cooldownUntil = tick() + Cfg.Cooldown
 			Entity:SetState("Vaulting", nil)
