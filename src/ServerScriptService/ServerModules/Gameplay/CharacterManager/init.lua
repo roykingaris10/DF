@@ -245,7 +245,9 @@ print("NFNFVMV")
 	if LastHit and LastHit.Tick then
 		self:KillFeed(LastHit)
 	end
-	self.Parent.ActionManager:DragEnd()
+	if self.Parent.ActionManager and self.Parent.ActionManager.DragEnd then
+		self.Parent.ActionManager:DragEnd()
+	end
 --	self.Died:Fire();
 
 	for Attribute: string in self.Rig:GetAttributes() do
