@@ -217,14 +217,17 @@ return function(Client)
 		vaultVel.Parent = hrp
 		Debris:AddItem(vaultVel, Cfg.VelocityDuration)
 
-		-- Hold orientation against in-flight torque. Moderate force absorbs
-		-- collision tumble without locking so rigidly that landing physics
-		-- break. Self-cleans via Debris just past the velocity window.
+		-- Hold orientation hard against in-flight torque. This is the only
+		-- thing keeping the character upright when BodyVelocity drives them
+		-- through a corner — without it, glancing collision torque tumbles
+		-- HRP. Stronger torque + responsive P/D so corner contact can't
+		-- overpower it. Self-cleans via Debris just past the velocity
+		-- window; HRP CFrame at vault start is already flattened upright.
 		local vaultGyro = Instance.new("BodyGyro")
 		vaultGyro.Name = "VaultGyro"
-		vaultGyro.MaxTorque = Vector3.new(4e5, 4e5, 4e5)
-		vaultGyro.P = 3000
-		vaultGyro.D = 500
+		vaultGyro.MaxTorque = Vector3.new(4e6, 4e6, 4e6)
+		vaultGyro.P = 25000
+		vaultGyro.D = 1500
 		vaultGyro.CFrame = hrp.CFrame
 		vaultGyro.Parent = hrp
 		Debris:AddItem(vaultGyro, Cfg.VelocityDuration + 0.1)

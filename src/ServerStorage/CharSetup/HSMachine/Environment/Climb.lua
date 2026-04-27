@@ -192,10 +192,16 @@ return function(Client)
 
 		-- Position the character clinging to the wall: face into the wall,
 		-- offset back by ClingOffset so we're not embedded in the part.
+		-- intoWall must be flattened to the horizontal plane: if the wall
+		-- is even slightly tilted off-vertical, intoWall has a Y component
+		-- and CFrame.new(lookAt) ends up tilting the character to match the
+		-- wall slope (the "45° lean while climbing" symptom).
 		local intoWall = -wallInfo.normal
+		local horizInto = Vector3.new(intoWall.X, 0, intoWall.Z)
+		horizInto = horizInto.Magnitude > 0.01 and horizInto.Unit or Vector3.new(0, 0, 1)
 		local clingPos = wallInfo.point + wallInfo.normal * Cfg.ClingOffset
 		clingPos = Vector3.new(clingPos.X, hrp.Position.Y, clingPos.Z)
-		local clingCFrame = CFrame.new(clingPos, clingPos + intoWall)
+		local clingCFrame = CFrame.new(clingPos, clingPos + horizInto)
 
 		-- Anchor HRP for the entire climb. We move via CFrame each frame; this
 		-- avoids fighting gravity, Humanoid auto-rotation, and collision
@@ -302,8 +308,13 @@ return function(Client)
 			local currentDot = (newPos - probe.point):Dot(session.wallNormal)
 			newPos = newPos + session.wallNormal * (Cfg.ClingOffset - currentDot)
 
+			-- Face into the wall, but only on the horizontal plane. Tilted
+			-- walls have a wall normal with a Y component; using it directly
+			-- in CFrame.new would lean the character to match the wall slope.
 			local intoWall2 = -session.wallNormal
-			hrp.CFrame = CFrame.new(newPos, newPos + intoWall2)
+			local horizInto2 = Vector3.new(intoWall2.X, 0, intoWall2.Z)
+			horizInto2 = horizInto2.Magnitude > 0.01 and horizInto2.Unit or Vector3.new(0, 0, 1)
+			hrp.CFrame = CFrame.new(newPos, newPos + horizInto2)
 
 			-- Stuck detection: holding input but not moving means we're against
 			-- a ceiling or the wall ends here — drop after a timeout.
