@@ -153,8 +153,7 @@ return function(Client)
 	local function runVault(Entity, target)
 		local character = Entity.Character
 		local hrp = character:FindFirstChild("HumanoidRootPart")
-		local humanoid = character:FindFirstChildOfClass("Humanoid")
-		if not hrp or not humanoid then return end
+		if not hrp then return end
 
 		active = true
 		Entity:SetState("Vaulting", true)
@@ -164,16 +163,11 @@ return function(Client)
 		local existing = hrp:FindFirstChild("DashVelocity")
 		if existing then existing:Destroy() end
 
-		-- Lock orientation for the duration of the vault. Without this, the
-		-- Humanoid's auto-rotate fights the LookVector-aligned velocity and a
-		-- glancing collision with the obstacle's top corner can tumble the
-		-- HRP — which is the "45° tilt + animation drops" symptom.
-		local autoRotateBefore = humanoid.AutoRotate
-		humanoid.AutoRotate = false
-
-		-- Reset any accumulated angular velocity so the HRP doesn't carry a
-		-- pre-existing spin into the vault. Snap upright too in case the
-		-- previous frame already started tilting us.
+		-- Reset accumulated angular velocity and snap upright on the
+		-- horizontal plane. We deliberately don't touch Humanoid.AutoRotate
+		-- — this framework drives that property from a character attribute
+		-- (CharacterHandler) and any direct manipulation gets overwritten,
+		-- which previously left AutoRotate stuck off after a vault.
 		hrp.AssemblyAngularVelocity = Vector3.zero
 		local lookVec = hrp.CFrame.LookVector
 		local flatLook = Vector3.new(lookVec.X, 0, lookVec.Z)
@@ -181,12 +175,10 @@ return function(Client)
 			hrp.CFrame = CFrame.new(hrp.Position, hrp.Position + flatLook.Unit)
 		end
 
-		-- Pre-clear the obstacle. Without this, when the player is very close
-		-- to the wall, the upper half of HRP collides with the wall top — the
-		-- collision resolution torque tumbles HRP forward, which is the
-		-- "tilts 45° and climbs the wall" failure mode. Snap up by enough to
-		-- put the whole HRP above the obstacle top before forward velocity
-		-- applies.
+		-- Pre-clear the obstacle. When the player is very close to the wall,
+		-- the upper half of HRP collides with the wall top and the collision
+		-- resolution torque tumbles them forward (the "45° tilt" symptom).
+		-- Snap up so the whole HRP sits above the top before forward velocity.
 		local heightAboveCenter = (target and target.heightAboveCenter) or 0
 		local snapUp = math.max(0, heightAboveCenter + Cfg.PreClearOffset)
 		if snapUp > 0 then
@@ -204,9 +196,9 @@ return function(Client)
 		vaultVel.Parent = hrp
 		Debris:AddItem(vaultVel, Cfg.VelocityDuration)
 
-		-- Hold orientation against any in-flight torque. A BodyGyro with
-		-- moderate force gently prevents tumbling without locking the
-		-- character so rigidly that physics can't push them around naturally.
+		-- Hold orientation against in-flight torque. Moderate force absorbs
+		-- collision tumble without locking so rigidly that landing physics
+		-- break. Self-cleans via Debris just past the velocity window.
 		local vaultGyro = Instance.new("BodyGyro")
 		vaultGyro.Name = "VaultGyro"
 		vaultGyro.MaxTorque = Vector3.new(4e5, 4e5, 4e5)
@@ -218,11 +210,11 @@ return function(Client)
 
 		playVaultAnim(Entity)
 
-		-- Restore AutoRotate and clear flags after the velocity finishes.
+		-- Clear vault flags after the velocity window. Belt-and-suspenders
+		-- destroys the constraints in case Debris hasn't gotten to them yet.
 		task.delay(Cfg.VelocityDuration + 0.05, function()
-			if humanoid and humanoid.Parent then
-				humanoid.AutoRotate = autoRotateBefore
-			end
+			if vaultVel and vaultVel.Parent then vaultVel:Destroy() end
+			if vaultGyro and vaultGyro.Parent then vaultGyro:Destroy() end
 			active = false
 			cooldownUntil = tick() + Cfg.Cooldown
 			Entity:SetState("Vaulting", nil)
