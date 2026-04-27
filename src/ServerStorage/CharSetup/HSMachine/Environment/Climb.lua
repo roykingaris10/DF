@@ -211,6 +211,28 @@ return function(Client)
 		hrp.CFrame = clingCFrame
 		humanoid.AutoRotate = false
 
+		-- Lock Humanoid out of state transitions during the climb. Without
+		-- this, with HRP anchored against a wall the Humanoid auto-enters
+		-- Freefall (no floor) and tries to play its FreeFalling animation
+		-- — which in this game's AnimationData is set to id=1 (placeholder)
+		-- and renders as the limp ragdoll pose, even though HRP itself is
+		-- upright. Force it into Running and disable transitions to all the
+		-- mid-air / fall-related states. Restored on release via the trove.
+		local stateBlocks = {
+			Enum.HumanoidStateType.Freefall,
+			Enum.HumanoidStateType.Jumping,
+			Enum.HumanoidStateType.Climbing,
+			Enum.HumanoidStateType.FallingDown,
+			Enum.HumanoidStateType.Ragdoll,
+			Enum.HumanoidStateType.GettingUp,
+		}
+		local restoreStates = {}
+		for _, st in ipairs(stateBlocks) do
+			restoreStates[st] = humanoid:GetStateEnabled(st)
+			humanoid:SetStateEnabled(st, false)
+		end
+		humanoid:ChangeState(Enum.HumanoidStateType.Running)
+
 		if Entity.MovementHandler then
 			Entity.MovementHandler:SetAbsolute("Climb", {
 				WalkSpeed = 0,
@@ -245,10 +267,13 @@ return function(Client)
 			missStreak = 0,
 		}
 
-		-- Restore AutoRotate when the climb session ends.
+		-- Restore AutoRotate and the Humanoid states we disabled.
 		trove:Add(function()
 			if humanoid and humanoid.Parent then
 				humanoid.AutoRotate = true
+				for state, wasEnabled in pairs(restoreStates) do
+					humanoid:SetStateEnabled(state, wasEnabled)
+				end
 			end
 		end)
 
