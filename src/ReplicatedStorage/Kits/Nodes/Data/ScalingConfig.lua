@@ -65,30 +65,25 @@ ScalingConfig.Mantle = {
 }
 
 ScalingConfig.Vault = {
-	-- Vault height window, measured from the player's feet upward. This is
-	-- intentionally below Mantle's MinHeight so the two don't fight: anything
-	-- waist-to-chest height vaults, anything taller mantles.
+	-- Vault height window, measured from the player's feet upward.
+	-- Original game's rule was: top of obstacle within 1 stud above HRP center
+	-- (HRP center is ~3 studs above feet, so up to ~4 above feet).
 	MinHeight = 1.5,
 	MaxHeight = 4.0,
-	-- How far in front of the player the obstacle can be.
-	ForwardReach = 3.5,
-	-- Obstacle must be no thicker than this on the depth axis (fence/railing
-	-- profile). 4 studs covers most fences and low walls without including
-	-- 6+ stud-deep walls.
-	MaxThickness = 4.5,
-	-- Beyond the far edge, the landing area must be at most this much lower
-	-- than the take-off height (don't vault off a cliff into a 50-stud drop).
-	MaxLandingDrop = 8.0,
-	-- Required clear horizontal space immediately past the far edge.
-	FarSideClearance = 2.0,
-	-- Duration of the arc.
-	Duration = 0.45,
-	-- Apex of the arc, in studs above the obstacle's top.
-	ApexClearance = 1.6,
-	-- Forward velocity applied to HRP on landing so the player keeps momentum.
-	ExitVelocity = 28,
+	-- How far in front of the player the obstacle face can be.
+	ForwardReach = 5.0,
+	-- BodyVelocity tunables (matches the original game's feel).
+	-- Forward velocity in studs/s applied for VelocityDuration.
+	ForwardImpulse = 40,
+	-- Vertical velocity component, gives the hop arc.
+	UpwardImpulse = 15,
+	-- Duration the BodyVelocity stays attached. Long enough to clear the
+	-- obstacle, short enough that physics takes over for the landing.
+	VelocityDuration = 0.2,
+	-- Animation playback speed multiplier (original used 1.2).
+	AnimSpeed = 1.2,
 	-- Cooldown before the next vault can fire.
-	Cooldown = 0.8,
+	Cooldown = 1.5,
 }
 
 -- Surfaces. Anything tagged Climbable=true overrides everything; NoClimb=true
