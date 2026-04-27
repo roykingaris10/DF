@@ -180,7 +180,8 @@ return function(Client)
 		-- resolution torque tumbles them forward (the "45° tilt" symptom).
 		-- Snap up so the whole HRP sits above the top before forward velocity.
 		local heightAboveCenter = (target and target.heightAboveCenter) or 0
-		local snapUp = math.max(0, heightAboveCenter + Cfg.PreClearOffset)
+		local preClear = Cfg.PreClearOffset or 1.5
+		local snapUp = math.max(0, heightAboveCenter + preClear)
 		if snapUp > 0 then
 			hrp.CFrame = hrp.CFrame + Vector3.new(0, snapUp, 0)
 		end
