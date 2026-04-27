@@ -76,7 +76,7 @@ ScalingConfig.Vault = {
 	-- Forward velocity in studs/s applied for VelocityDuration.
 	ForwardImpulse = 40,
 	-- Vertical velocity component, gives the hop arc.
-	UpwardImpulse = 15,
+	UpwardImpulse = 22,
 	-- Duration the BodyVelocity stays attached. Long enough to clear the
 	-- obstacle, short enough that physics takes over for the landing.
 	VelocityDuration = 0.2,
@@ -84,6 +84,11 @@ ScalingConfig.Vault = {
 	AnimSpeed = 1.2,
 	-- Cooldown before the next vault can fire.
 	Cooldown = 1.5,
+	-- Extra studs added to the upward snap at vault start so HRP is fully
+	-- above the obstacle top before forward velocity applies. Prevents the
+	-- "tilt + climb the wall" tumble that happens when HRP collides with
+	-- the obstacle's top edge mid-vault.
+	PreClearOffset = 1.5,
 }
 
 -- Surfaces. Anything tagged Climbable=true overrides everything; NoClimb=true

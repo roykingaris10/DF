@@ -181,6 +181,18 @@ return function(Client)
 			hrp.CFrame = CFrame.new(hrp.Position, hrp.Position + flatLook.Unit)
 		end
 
+		-- Pre-clear the obstacle. Without this, when the player is very close
+		-- to the wall, the upper half of HRP collides with the wall top — the
+		-- collision resolution torque tumbles HRP forward, which is the
+		-- "tilts 45° and climbs the wall" failure mode. Snap up by enough to
+		-- put the whole HRP above the obstacle top before forward velocity
+		-- applies.
+		local heightAboveCenter = (target and target.heightAboveCenter) or 0
+		local snapUp = math.max(0, heightAboveCenter + Cfg.PreClearOffset)
+		if snapUp > 0 then
+			hrp.CFrame = hrp.CFrame + Vector3.new(0, snapUp, 0)
+		end
+
 		-- BodyVelocity hop. Matches the original game's tuning: forward push
 		-- + upward pop, lasts long enough to clear a fence then physics takes
 		-- over for the landing.
