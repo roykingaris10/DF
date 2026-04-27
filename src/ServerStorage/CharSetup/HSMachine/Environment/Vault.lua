@@ -5,6 +5,7 @@ return function(Client)
 	local UserInputService = game:GetService("UserInputService")
 	local Debris = game:GetService("Debris")
 	local TweenService = game:GetService("TweenService")
+	local ContentProvider = game:GetService("ContentProvider")
 
 	local CFG = {
 		MinHeight = 1.5,
@@ -23,9 +24,18 @@ return function(Client)
 		LandingWalkSpeed = 24,
 		LandingBoostDuration = 0.7,
 
-		SoundId = "rbxassetid://0",
+		SoundId = "rbxassetid://87293838054174",
 		SoundVolume = 0.5,
 	}
+
+	task.spawn(function()
+		if CFG.SoundId and CFG.SoundId ~= "rbxassetid://0" then
+			local s = Instance.new("Sound")
+			s.SoundId = CFG.SoundId
+			pcall(function() ContentProvider:PreloadAsync({s}) end)
+			s:Destroy()
+		end
+	end)
 
 	local BLOCKING = {"CurrentlyAttacking", "Dashing", "Blocking", "Sliding", "Stunned", "Aerial"}
 
@@ -155,6 +165,16 @@ return function(Client)
 		local existing = hrp:FindFirstChild("DashVelocity")
 		if existing then existing:Destroy() end
 
+		if CFG.SoundId and CFG.SoundId ~= "rbxassetid://0" then
+			local sound = Instance.new("Sound")
+			sound.SoundId = CFG.SoundId
+			sound.Volume = CFG.SoundVolume
+			sound.PlayOnRemove = false
+			sound.Parent = hrp
+			sound:Play()
+			Debris:AddItem(sound, 3)
+		end
+
 		local vaultVel = Instance.new("BodyVelocity")
 		vaultVel.Name = "VaultVelocity"
 		vaultVel.MaxForce = Vector3.new(1e6, 1e6, 1e6)
@@ -163,13 +183,6 @@ return function(Client)
 		Debris:AddItem(vaultVel, CFG.VelocityDuration)
 
 		playVaultAnim(humanoid)
-
-		local sound = Instance.new("Sound")
-		sound.SoundId = CFG.SoundId
-		sound.Volume = CFG.SoundVolume
-		sound.Parent = hrp
-		sound:Play()
-		Debris:AddItem(sound, 3)
 
 		local camera = workspace.CurrentCamera
 		if camera then
