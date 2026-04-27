@@ -88,37 +88,66 @@ return function(Client)
 		}
 	end
 
-	-- Animation loading. Try AnimHandler first for consistency with the rest
-	-- of the framework; if the Animation instance for Vault1/2/3 isn't in the
-	-- Animations folder, fall back to creating + loading from the asset ID
-	-- directly. The fallback keeps the system working even if the Animations
-	-- folder hasn't been populated for these tracks yet.
-	local loadedAnims = {}  -- cache: variant index -> AnimationTrack
+	-- Animation tracks. Loaded once per Animator (re-loaded after respawn) and
+	-- kept alive by parenting the Animation Instances to the Animator so
+	-- Roblox can't GC them mid-playback. Priority is Action3 to ensure we
+	-- override the Humanoid's default Jump/FreeFalling animations (which in
+	-- this game's AnimationData are set to id=1 placeholders that render as
+	-- the broken "limbs in torso" pose).
+	local cachedTracks = nil
+	local cachedAnimator = nil
 
-	local function getVaultAnim(Entity, variant)
-		if loadedAnims[variant] then return loadedAnims[variant] end
+	local function loadVaultTracks(Entity)
+		local character = Entity.Character
+		local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+		local animator = humanoid and humanoid:FindFirstChildOfClass("Animator")
+		if not animator then return nil end
 
-		local track
-		if Entity.AnimHandler and Entity.AnimHandler.Fetch then
-			pcall(function()
-				track = Entity.AnimHandler:Fetch("General/Vault" .. variant)
-			end)
+		-- Re-load if the animator changed (character respawn invalidates cache).
+		if cachedAnimator ~= animator then
+			cachedTracks = nil
+			cachedAnimator = animator
 		end
+		if cachedTracks then return cachedTracks end
 
-		if not track and Client.AnimationData and Client.AnimationData.General then
-			local id = Client.AnimationData.General["Vault" .. variant]
-			local humanoid = Entity.Character and Entity.Character:FindFirstChildOfClass("Humanoid")
-			local animator = humanoid and humanoid:FindFirstChildOfClass("Animator")
-			if id and animator then
+		local data = Client.AnimationData and Client.AnimationData.General
+		if not data then return nil end
+
+		local tracks = {}
+		for i = 1, 3 do
+			local id = data["Vault" .. i]
+			if id then
 				local anim = Instance.new("Animation")
+				anim.Name = "Vault" .. i
 				anim.AnimationId = "rbxassetid://" .. tostring(id)
-				local ok, result = pcall(function() return animator:LoadAnimation(anim) end)
-				if ok then track = result end
+				anim.Parent = animator  -- keeps the Animation alive for the track
+				local ok, track = pcall(function() return animator:LoadAnimation(anim) end)
+				if ok and track then
+					track.Priority = Enum.AnimationPriority.Action3
+					table.insert(tracks, track)
+				end
 			end
 		end
 
-		loadedAnims[variant] = track
-		return track
+		cachedTracks = #tracks > 0 and tracks or nil
+		return cachedTracks
+	end
+
+	local function playVaultAnim(Entity)
+		local tracks = loadVaultTracks(Entity)
+		if not tracks or #tracks == 0 then
+			warn("[Vault] No vault animations could be loaded — check Client.AnimationData.General.Vault1/2/3 IDs")
+			return
+		end
+
+		local track = tracks[math.random(1, #tracks)]
+		-- If the same track is replayed before the previous play has ended,
+		-- Stop(0) it first so Play() restarts cleanly.
+		if track.IsPlaying then
+			track:Stop(0)
+		end
+		track:Play()
+		track:AdjustSpeed(Cfg.AnimSpeed)
 	end
 
 	local function runVault(Entity, target)
@@ -145,16 +174,7 @@ return function(Client)
 		vaultVel.Parent = hrp
 		Debris:AddItem(vaultVel, Cfg.VelocityDuration)
 
-		-- Random anim variant for visual variety.
-		local variant = math.random(1, 3)
-		local anim = getVaultAnim(Entity, variant)
-		if anim then
-			anim.Priority = Enum.AnimationPriority.Action2
-			pcall(function()
-				anim:Play()
-				anim:AdjustSpeed(Cfg.AnimSpeed)
-			end)
-		end
+		playVaultAnim(Entity)
 
 		-- Release the active flag after the velocity finishes; cooldown runs
 		-- from there.
