@@ -31,3 +31,5 @@ end)
 for _, player in ipairs(Players:GetPlayers()) do
 	task.spawn(spawnPlayer, player)
 end
+
+return nil
