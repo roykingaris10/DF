@@ -297,10 +297,13 @@ return function(Client)
 
 	};
 
-	-- Jump-driven scaling: while clinging, jump becomes wall-jump (and the
-	-- character is anchored/velocity-driven so Humanoid won't auto-jump).
-	-- Otherwise we try an auto-mantle; if it takes, suppress the default jump
-	-- by setting Humanoid.Jump = false on the next frame.
+	-- Jump-driven traversal. Priority order:
+	--   1. clinging  -> wall-jump
+	--   2. forward-into-low-obstacle -> vault over
+	--   3. forward-into-mid-obstacle -> mantle onto
+	--   4. otherwise -> default jump
+	-- For 2 and 3, when the action takes effect we cancel Humanoid.Jump so
+	-- the engine's built-in jump doesn't fire on top of our custom motion.
 	UserInputService.JumpRequest:Connect(function()
 		if not Client.Entity or not Client.Entity.SetupFinished then return end
 		local Character = player.Character
@@ -314,12 +317,20 @@ return function(Client)
 			return
 		end
 
-		Entity.StateMachine:ChangeState("Environment", "Mantle")
-		local mantled = Entity.StateMachine:Trigger("Environment", "TryMantle")
-		if mantled then
-			-- Cancel the default jump that JumpRequest is about to issue.
+		local function suppressDefaultJump()
 			local hum = Character:FindFirstChildOfClass("Humanoid")
 			if hum then hum.Jump = false end
+		end
+
+		Entity.StateMachine:ChangeState("Environment", "Vault")
+		if Entity.StateMachine:Trigger("Environment", "TryVault") then
+			suppressDefaultJump()
+			return
+		end
+
+		Entity.StateMachine:ChangeState("Environment", "Mantle")
+		if Entity.StateMachine:Trigger("Environment", "TryMantle") then
+			suppressDefaultJump()
 		end
 	end)
 

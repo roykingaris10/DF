@@ -64,6 +64,33 @@ ScalingConfig.Mantle = {
 	AutoOnJump = true,
 }
 
+ScalingConfig.Vault = {
+	-- Vault height window, measured from the player's feet upward. This is
+	-- intentionally below Mantle's MinHeight so the two don't fight: anything
+	-- waist-to-chest height vaults, anything taller mantles.
+	MinHeight = 1.5,
+	MaxHeight = 4.0,
+	-- How far in front of the player the obstacle can be.
+	ForwardReach = 3.5,
+	-- Obstacle must be no thicker than this on the depth axis (fence/railing
+	-- profile). 4 studs covers most fences and low walls without including
+	-- 6+ stud-deep walls.
+	MaxThickness = 4.5,
+	-- Beyond the far edge, the landing area must be at most this much lower
+	-- than the take-off height (don't vault off a cliff into a 50-stud drop).
+	MaxLandingDrop = 8.0,
+	-- Required clear horizontal space immediately past the far edge.
+	FarSideClearance = 2.0,
+	-- Duration of the arc.
+	Duration = 0.45,
+	-- Apex of the arc, in studs above the obstacle's top.
+	ApexClearance = 1.6,
+	-- Forward velocity applied to HRP on landing so the player keeps momentum.
+	ExitVelocity = 28,
+	-- Cooldown before the next vault can fire.
+	Cooldown = 0.8,
+}
+
 -- Surfaces. Anything tagged Climbable=true overrides everything; NoClimb=true
 -- always blocks. Otherwise we fall back to this material whitelist.
 ScalingConfig.Surfaces = {
