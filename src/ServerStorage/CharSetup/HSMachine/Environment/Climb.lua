@@ -218,6 +218,11 @@ return function(Client)
 			restoreAnimate = true
 		end
 
+		local cameraFacingBefore = character:GetAttribute("CameraFacing")
+		local fullFacingBefore = character:GetAttribute("FullFacing")
+		character:SetAttribute("CameraFacing", false)
+		character:SetAttribute("FullFacing", false)
+
 		local stateBlocks = {
 			Enum.HumanoidStateType.Freefall,
 			Enum.HumanoidStateType.Jumping,
@@ -276,6 +281,10 @@ return function(Client)
 			end
 			if restoreAnimate and animateScript and animateScript.Parent then
 				animateScript.Disabled = false
+			end
+			if character.Parent then
+				character:SetAttribute("CameraFacing", cameraFacingBefore)
+				character:SetAttribute("FullFacing", fullFacingBefore)
 			end
 		end)
 
