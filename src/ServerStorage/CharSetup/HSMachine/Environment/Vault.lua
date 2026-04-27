@@ -6,16 +6,19 @@ return function(Client)
 	local Debris = game:GetService("Debris")
 	local TweenService = game:GetService("TweenService")
 	local ContentProvider = game:GetService("ContentProvider")
+	local SoundService = game:GetService("SoundService")
 
 	local CFG = {
-		MinHeight = 1.5,
-		MaxHeight = 4.0,
-		ForwardReach = 5.0,
+		MinHeight = 1.0,
+		MaxHeight = 4.5,
+		ForwardReach = 6.5,
 		ForwardImpulse = 40,
 		UpwardImpulse = 22,
 		VelocityDuration = 0.2,
 		AnimSpeed = 1.2,
-		Cooldown = 1.5,
+		Cooldown = 0.5,
+
+		ForwardInputThreshold = 0.2,
 
 		FOVKickAmount = 4,
 		FOVKickIn = 0.12,
@@ -28,14 +31,17 @@ return function(Client)
 		SoundVolume = 0.5,
 	}
 
-	task.spawn(function()
-		if CFG.SoundId and CFG.SoundId ~= "rbxassetid://0" then
-			local s = Instance.new("Sound")
-			s.SoundId = CFG.SoundId
-			pcall(function() ContentProvider:PreloadAsync({s}) end)
-			s:Destroy()
-		end
-	end)
+	local vaultSound
+	if CFG.SoundId and CFG.SoundId ~= "rbxassetid://0" then
+		vaultSound = Instance.new("Sound")
+		vaultSound.Name = "VaultSound"
+		vaultSound.SoundId = CFG.SoundId
+		vaultSound.Volume = CFG.SoundVolume
+		vaultSound.Parent = SoundService
+		task.spawn(function()
+			pcall(function() ContentProvider:PreloadAsync({vaultSound}) end)
+		end)
+	end
 
 	local BLOCKING = {"CurrentlyAttacking", "Dashing", "Blocking", "Sliding", "Stunned", "Aerial"}
 
@@ -134,12 +140,14 @@ return function(Client)
 
 	local function hasForwardInput(character)
 		if UserInputService:IsKeyDown(Enum.KeyCode.W) then return true end
+		if UserInputService:IsKeyDown(Enum.KeyCode.A) then return true end
+		if UserInputService:IsKeyDown(Enum.KeyCode.D) then return true end
 		local hum = character:FindFirstChildOfClass("Humanoid")
 		local moveDir = hum and hum.MoveDirection or Vector3.zero
-		if moveDir.Magnitude < 0.1 then return false end
+		if moveDir.Magnitude < 0.05 then return false end
 		local hrp = character:FindFirstChild("HumanoidRootPart")
 		if not hrp then return false end
-		return moveDir:Dot(hrp.CFrame.LookVector) > 0.5
+		return moveDir:Dot(hrp.CFrame.LookVector) > CFG.ForwardInputThreshold
 	end
 
 	State["TryVault"] = function(self, Params)
@@ -165,14 +173,9 @@ return function(Client)
 		local existing = hrp:FindFirstChild("DashVelocity")
 		if existing then existing:Destroy() end
 
-		if CFG.SoundId and CFG.SoundId ~= "rbxassetid://0" then
-			local sound = Instance.new("Sound")
-			sound.SoundId = CFG.SoundId
-			sound.Volume = CFG.SoundVolume
-			sound.PlayOnRemove = false
-			sound.Parent = hrp
-			sound:Play()
-			Debris:AddItem(sound, 3)
+		if vaultSound then
+			vaultSound.TimePosition = 0
+			vaultSound:Play()
 		end
 
 		local vaultVel = Instance.new("BodyVelocity")
