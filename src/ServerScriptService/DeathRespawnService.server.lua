@@ -1,8 +1,6 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-Players.CharacterAutoLoads = false
-
 local function getOrCreate(name, className)
 	local existing = ReplicatedStorage:FindFirstChild(name)
 	if existing then return existing end
@@ -15,21 +13,19 @@ end
 local RequestRespawn = getOrCreate("RequestRespawn", "RemoteEvent")
 local RespawnReady = getOrCreate("RespawnReady", "RemoteEvent")
 
-local function spawnPlayer(player)
-	player:LoadCharacter()
-	RespawnReady:FireClient(player)
+local function configurePlayer(player)
+	player.RespawnTime = math.huge
 end
 
 RequestRespawn.OnServerEvent:Connect(function(player)
-	spawnPlayer(player)
+	player:LoadCharacter()
+	RespawnReady:FireClient(player)
 end)
 
-Players.PlayerAdded:Connect(function(player)
-	spawnPlayer(player)
-end)
+Players.PlayerAdded:Connect(configurePlayer)
 
 for _, player in ipairs(Players:GetPlayers()) do
-	task.spawn(spawnPlayer, player)
+	configurePlayer(player)
 end
 
 return nil
