@@ -242,7 +242,7 @@ print("NFNFVMV")
 	--	repeat RunService.Heartbeat:Wait() until not self.Active and not self.Stunned;
 	--end;
 	local LastHit = self.Parent.Combat.LastHit;
-	if LastHit then 
+	if LastHit and LastHit.Tick then
 		self:KillFeed(LastHit)
 	end
 	self.Parent.ActionManager:DragEnd()
