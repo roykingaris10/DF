@@ -51,9 +51,10 @@ return function(Client)
 
 	-- Look forward for a climbable wall whose normal is roughly vertical.
 	-- Casts a small cone (center + 4 chest-level offsets) so a thin part or
-	-- a slight rotation gap can still hold the climb. Returns the closest
-	-- climbable hit.
-	local function probeWall(character)
+	-- a slight rotation gap can still hold the climb. If `lockedPart` is
+	-- given, only accept hits on that exact part — prevents the climb from
+	-- silently switching to a nearby surface mid-session.
+	local function probeWall(character, lockedPart)
 		local hrp = character:FindFirstChild("HumanoidRootPart")
 		if not hrp then return nil end
 
@@ -74,16 +75,19 @@ return function(Client)
 		local best
 		for _, offset in ipairs(offsets) do
 			local hit = workspace:Raycast(origin + offset, forward * Cfg.GripRange, rp)
-			if hit and isPartClimbable(hit.Instance) then
-				local horizontalMag = math.sqrt(hit.Normal.X * hit.Normal.X + hit.Normal.Z * hit.Normal.Z)
-				if horizontalMag >= Cfg.WallVerticalThreshold then
-					if not best or hit.Distance < best.distance then
-						best = {
-							point = hit.Position,
-							normal = hit.Normal,
-							part = hit.Instance,
-							distance = hit.Distance,
-						}
+			if hit then
+				local accept = lockedPart and (hit.Instance == lockedPart) or isPartClimbable(hit.Instance)
+				if accept then
+					local horizontalMag = math.sqrt(hit.Normal.X * hit.Normal.X + hit.Normal.Z * hit.Normal.Z)
+					if horizontalMag >= Cfg.WallVerticalThreshold then
+						if not best or hit.Distance < best.distance then
+							best = {
+								point = hit.Position,
+								normal = hit.Normal,
+								part = hit.Instance,
+								distance = hit.Distance,
+							}
+						end
 					end
 				end
 			end
@@ -252,9 +256,10 @@ return function(Client)
 			-- Re-probe each tick so leaving the wall (corner, doorway, end of
 			-- a wall section) auto-releases the climb. Allow a few consecutive
 			-- misses before giving up — a single missed tick during a snap or
-			-- a thin face shouldn't drop the climb.
-			local probe = probeWall(character)
-			if not probe or not isPartClimbable(probe.part) then
+			-- a thin face shouldn't drop the climb. Locked to the original
+			-- wall part so the cone-cast can't drift to nearby slopes.
+			local probe = probeWall(character, session.wallPart)
+			if not probe then
 				session.missStreak = session.missStreak + 1
 				if session.missStreak == 1 then
 					print(("[Climb] probe miss #%d at %s look=%s"):format(
@@ -288,12 +293,14 @@ return function(Client)
 			local sideSpeed = sideInput * Cfg.SidewaysSpeed
 			local stepDelta = (wallUp * verticalSpeed + wallRight * sideSpeed) * dt
 
-			-- New target position: previous position + step, then snapped to
-			-- the wall normal so we maintain ClingOffset distance.
+			-- Step along the wall plane, then snap normal-distance to ClingOffset.
+			--   Goal: (newPos - probe.point) · wallNormal == ClingOffset
+			--   currentDot = (newPos - probe.point) · wallNormal
+			--   delta = ClingOffset - currentDot
+			--   newPos := newPos + wallNormal * delta
 			local newPos = hrp.Position + stepDelta
-			local toWall = probe.point - newPos
-			local distanceAlongNormal = toWall:Dot(session.wallNormal)
-			newPos = newPos + session.wallNormal * (-distanceAlongNormal + Cfg.ClingOffset)
+			local currentDot = (newPos - probe.point):Dot(session.wallNormal)
+			newPos = newPos + session.wallNormal * (Cfg.ClingOffset - currentDot)
 
 			local intoWall2 = -session.wallNormal
 			hrp.CFrame = CFrame.new(newPos, newPos + intoWall2)
