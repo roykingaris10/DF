@@ -153,7 +153,8 @@ return function(Client)
 	local function runVault(Entity, target)
 		local character = Entity.Character
 		local hrp = character:FindFirstChild("HumanoidRootPart")
-		if not hrp then return end
+		local humanoid = character:FindFirstChildOfClass("Humanoid")
+		if not hrp or not humanoid then return end
 
 		active = true
 		Entity:SetState("Vaulting", true)
@@ -162,6 +163,23 @@ return function(Client)
 		-- Clear any conflicting velocity (existing dashes etc.).
 		local existing = hrp:FindFirstChild("DashVelocity")
 		if existing then existing:Destroy() end
+
+		-- Lock orientation for the duration of the vault. Without this, the
+		-- Humanoid's auto-rotate fights the LookVector-aligned velocity and a
+		-- glancing collision with the obstacle's top corner can tumble the
+		-- HRP — which is the "45° tilt + animation drops" symptom.
+		local autoRotateBefore = humanoid.AutoRotate
+		humanoid.AutoRotate = false
+
+		-- Reset any accumulated angular velocity so the HRP doesn't carry a
+		-- pre-existing spin into the vault. Snap upright too in case the
+		-- previous frame already started tilting us.
+		hrp.AssemblyAngularVelocity = Vector3.zero
+		local lookVec = hrp.CFrame.LookVector
+		local flatLook = Vector3.new(lookVec.X, 0, lookVec.Z)
+		if flatLook.Magnitude > 0.01 then
+			hrp.CFrame = CFrame.new(hrp.Position, hrp.Position + flatLook.Unit)
+		end
 
 		-- BodyVelocity hop. Matches the original game's tuning: forward push
 		-- + upward pop, lasts long enough to clear a fence then physics takes
@@ -174,11 +192,25 @@ return function(Client)
 		vaultVel.Parent = hrp
 		Debris:AddItem(vaultVel, Cfg.VelocityDuration)
 
+		-- Hold orientation against any in-flight torque. A BodyGyro with
+		-- moderate force gently prevents tumbling without locking the
+		-- character so rigidly that physics can't push them around naturally.
+		local vaultGyro = Instance.new("BodyGyro")
+		vaultGyro.Name = "VaultGyro"
+		vaultGyro.MaxTorque = Vector3.new(4e5, 4e5, 4e5)
+		vaultGyro.P = 3000
+		vaultGyro.D = 500
+		vaultGyro.CFrame = hrp.CFrame
+		vaultGyro.Parent = hrp
+		Debris:AddItem(vaultGyro, Cfg.VelocityDuration + 0.1)
+
 		playVaultAnim(Entity)
 
-		-- Release the active flag after the velocity finishes; cooldown runs
-		-- from there.
-		task.delay(Cfg.VelocityDuration, function()
+		-- Restore AutoRotate and clear flags after the velocity finishes.
+		task.delay(Cfg.VelocityDuration + 0.05, function()
+			if humanoid and humanoid.Parent then
+				humanoid.AutoRotate = autoRotateBefore
+			end
 			active = false
 			cooldownUntil = tick() + Cfg.Cooldown
 			Entity:SetState("Vaulting", nil)
