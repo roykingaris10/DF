@@ -4,6 +4,7 @@ return function(Client)
 
 	local UserInputService = game:GetService("UserInputService")
 	local Debris = game:GetService("Debris")
+	local TweenService = game:GetService("TweenService")
 
 	local CFG = {
 		MinHeight = 1.5,
@@ -14,6 +15,16 @@ return function(Client)
 		VelocityDuration = 0.2,
 		AnimSpeed = 1.2,
 		Cooldown = 1.5,
+
+		FOVKickAmount = 4,
+		FOVKickIn = 0.12,
+		FOVKickOut = 0.35,
+
+		LandingWalkSpeed = 24,
+		LandingBoostDuration = 0.7,
+
+		SoundId = "rbxassetid://0",
+		SoundVolume = 0.5,
 	}
 
 	local BLOCKING = {"CurrentlyAttacking", "Dashing", "Blocking", "Sliding", "Stunned", "Aerial"}
@@ -153,7 +164,35 @@ return function(Client)
 
 		playVaultAnim(humanoid)
 
+		local sound = Instance.new("Sound")
+		sound.SoundId = CFG.SoundId
+		sound.Volume = CFG.SoundVolume
+		sound.Parent = hrp
+		sound:Play()
+		Debris:AddItem(sound, 3)
+
+		local camera = workspace.CurrentCamera
+		if camera then
+			local baseFOV = camera.FieldOfView
+			TweenService:Create(camera, TweenInfo.new(CFG.FOVKickIn, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+				FieldOfView = baseFOV + CFG.FOVKickAmount,
+			}):Play()
+			task.delay(CFG.FOVKickIn, function()
+				if camera and camera.Parent then
+					TweenService:Create(camera, TweenInfo.new(CFG.FOVKickOut, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut), {
+						FieldOfView = baseFOV,
+					}):Play()
+				end
+			end)
+		end
+
 		task.delay(CFG.VelocityDuration, function()
+			if Entity.MovementHandler then
+				Entity.MovementHandler:SetAbsolute("VaultBoost", {
+					WalkSpeed = CFG.LandingWalkSpeed,
+					Priority = 3,
+				}, CFG.LandingBoostDuration)
+			end
 			active = false
 			cooldownUntil = tick() + CFG.Cooldown
 			Entity:SetState("Vaulting", nil)
