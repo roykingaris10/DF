@@ -16,7 +16,27 @@ return function(Client)
 	local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 	local ScalingConfig = require(ReplicatedStorage.Kits.Nodes.Data.ScalingConfig)
-	local Cfg = ScalingConfig.Vault
+
+	-- Merge inline defaults into the user's config so the module still works
+	-- if ScalingConfig.Vault is partially out of date (common during
+	-- iterative testing — the user might re-paste Vault.lua before
+	-- ScalingConfig.lua). Anything the user has set wins; missing keys get
+	-- the defaults from the original game's tuning.
+	local CFG_DEFAULTS = {
+		MinHeight = 1.5,
+		MaxHeight = 4.0,
+		ForwardReach = 5.0,
+		ForwardImpulse = 40,
+		UpwardImpulse = 22,
+		VelocityDuration = 0.2,
+		AnimSpeed = 1.2,
+		Cooldown = 1.5,
+		PreClearOffset = 1.5,
+	}
+	local Cfg = ScalingConfig.Vault or {}
+	for k, v in pairs(CFG_DEFAULTS) do
+		if Cfg[k] == nil then Cfg[k] = v end
+	end
 
 	local cooldownUntil = 0
 	local active = false
