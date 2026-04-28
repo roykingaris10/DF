@@ -2,27 +2,26 @@
 local RunService = game:GetService('RunService')
 
 local Player = game.Players.LocalPlayer
-local Character = Player.Character
+local Character = Player.Character or Player.CharacterAdded:Wait()
 local Humanoid = Character:WaitForChild('Humanoid')
 local HumanoidRootPart = Character:WaitForChild('HumanoidRootPart')
 local Torso = Character:WaitForChild('Torso')
 
--- Original C0 Reference
+local RootJoint = HumanoidRootPart:WaitForChild('RootJoint')
+local Neck = Torso:WaitForChild('Neck')
+local RightHip = Torso:WaitForChild('Right Hip')
+local LeftHip = Torso:WaitForChild('Left Hip')
 
-local RootJointOriginalC0 = HumanoidRootPart.RootJoint.C0
-local NeckOriginalC0 = Torso.Neck.C0
-local RightHipOriginalC0 = Torso['Right Hip'].C0
-local LeftHipOriginalC0 = Torso['Left Hip'].C0
+local RootJointOriginalC0 = RootJoint.C0
+local NeckOriginalC0 = Neck.C0
+local RightHipOriginalC0 = RightHip.C0
+local LeftHipOriginalC0 = LeftHip.C0
 local PlayersTable = {}
-
---Customizable Settings
 
 local RangeOfMotion = 35
 local RangeOfMotionTorso = 70 - RangeOfMotion
 local RangeOfMotionXZ = RangeOfMotion/140
 local LerpSpeed = 0.004
-
---Main Code
 
 RangeOfMotion = math.rad(RangeOfMotion)
 RangeOfMotionTorso = math.rad(RangeOfMotionTorso)
@@ -32,7 +31,7 @@ function CheckCombatValues(Character,checkTable)
 	for i,value in pairs(checkTable) do
 		if Character:GetAttribute(value) then
 			ValueCheck = true
-			
+
 		end
 	end
 
@@ -47,7 +46,13 @@ local checkTable = {"Ragdoll","Stunned","Dashing","NoMovement","ClientActive","A
 
 function Calculate( dt, HumanoidRootPart, Humanoid, Torso )
 	if not HumanoidRootPart.Parent then return end
---	if CheckCombatValues(HumanoidRootPart.Parent,checkTable) then print("RANGEDAAA") RangeOfMotion = math.rad(0) RangeOfMotionTorso = math.rad(0) end
+
+	local rightHip = Torso:FindFirstChild('Right Hip')
+	local leftHip = Torso:FindFirstChild('Left Hip')
+	local neck = Torso:FindFirstChild('Neck')
+	local rootJoint = HumanoidRootPart:FindFirstChild('RootJoint')
+	if not rightHip or not leftHip or not neck or not rootJoint then return end
+
 	local DirectionOfMovement = HumanoidRootPart.CFrame:VectorToObjectSpace( HumanoidRootPart.AssemblyLinearVelocity )
 	DirectionOfMovement = Vector3.new( DirectionOfMovement.X / Humanoid.WalkSpeed, 0, DirectionOfMovement.Z / Humanoid.WalkSpeed )
 
@@ -68,15 +73,14 @@ function Calculate( dt, HumanoidRootPart, Humanoid, Torso )
 
 	local LerpTime = 1 - LerpSpeed ^ dt
 	if CheckCombatValues(HumanoidRootPart.Parent,checkTable) == true then
-		Torso['Right Hip'].C0 = RightHipOriginalC0
-		Torso['Left Hip'].C0 = LeftHipOriginalC0
---		HumanoidRootPart.RootJoint.C0 = RootJointOriginalC0
-		Torso.Neck.C0 = NeckOriginalC0
+		rightHip.C0 = RightHipOriginalC0
+		leftHip.C0 = LeftHipOriginalC0
+		neck.C0 = NeckOriginalC0
 	else
-		Torso['Right Hip'].C0 = Torso['Right Hip'].C0:Lerp(RightHipResult, LerpTime)
-		Torso['Left Hip'].C0 = Torso['Left Hip'].C0:Lerp(LeftHipResult, LerpTime)
-		HumanoidRootPart.RootJoint.C0 = HumanoidRootPart.RootJoint.C0:Lerp(RootJointResult, LerpTime)
-		Torso.Neck.C0 = Torso.Neck.C0:Lerp(NeckResult, LerpTime)
+		rightHip.C0 = rightHip.C0:Lerp(RightHipResult, LerpTime)
+		leftHip.C0 = leftHip.C0:Lerp(LeftHipResult, LerpTime)
+		rootJoint.C0 = rootJoint.C0:Lerp(RootJointResult, LerpTime)
+		neck.C0 = neck.C0:Lerp(NeckResult, LerpTime)
 	end
 end
 
