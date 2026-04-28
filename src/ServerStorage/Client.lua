@@ -97,8 +97,6 @@ for _, ModuleStart in Startingtable do
 	
 end
 
-script:ClearAllChildren()
-
 Client.Network:setKey()
 Client.MasterControl:Enable()
 Client.loaded = true
