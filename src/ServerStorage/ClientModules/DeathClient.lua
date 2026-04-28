@@ -460,25 +460,28 @@ return function(Client)
 	end
 
 	local function hideOtherGuis()
-		state.hiddenGuis = {}
+		state.hiddenGuiNames = {}
 		local pg = state.gui and state.gui.Parent
 		if not pg then return end
 		for _, child in ipairs(pg:GetChildren()) do
 			if child:IsA("ScreenGui") and child ~= state.gui and child.Enabled then
-				state.hiddenGuis[child] = true
+				state.hiddenGuiNames[child.Name] = true
 				child.Enabled = false
 			end
 		end
 	end
 
 	local function restoreOtherGuis()
-		if not state.hiddenGuis then return end
-		for gui in pairs(state.hiddenGuis) do
-			if gui and gui.Parent then
-				gui.Enabled = true
+		if not state.hiddenGuiNames then return end
+		local pg = state.gui and state.gui.Parent
+		if pg then
+			for _, child in ipairs(pg:GetChildren()) do
+				if child:IsA("ScreenGui") and state.hiddenGuiNames[child.Name] then
+					child.Enabled = true
+				end
 			end
 		end
-		state.hiddenGuis = nil
+		state.hiddenGuiNames = nil
 	end
 
 	local function playRespawnTransition(newHumanoid)
