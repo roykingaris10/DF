@@ -473,6 +473,7 @@ return function(Client)
 	end
 
 	local function onDeath()
+		print("[DeathClient] onDeath START isAnimating=", state.isAnimating)
 		if state.isAnimating then return end
 		state.isAnimating = true
 		state.awaitingRespawn = true
@@ -587,9 +588,13 @@ return function(Client)
 	end
 
 	local function setupCharacter(char)
+		print("[DeathClient] setupCharacter for", char.Name, "awaitingRespawn=", state.awaitingRespawn)
 		state.character = char
 		state.humanoid = char:WaitForChild("Humanoid", 10)
-		if not state.humanoid then return end
+		if not state.humanoid then
+			warn("[DeathClient] no humanoid on character — bailing setupCharacter")
+			return
+		end
 
 		if state.awaitingRespawn then
 			playRespawnTransition(state.humanoid)
@@ -602,22 +607,28 @@ return function(Client)
 		trackDamage()
 
 		local fired = false
-		local function fireOnce()
+		local function fireOnce(reason)
+			print("[DeathClient] fireOnce called via", reason, "fired=", fired)
 			if fired then return end
 			fired = true
 			onDeath()
 		end
 
-		state.humanoid.Died:Once(fireOnce)
+		state.humanoid.Died:Once(function()
+			fireOnce("Humanoid.Died")
+		end)
 
+		print("[DeathClient] initial Dead attribute on char:", char:GetAttribute("Dead"))
 		if char:GetAttribute("Dead") then
-			fireOnce()
+			fireOnce("initial-attribute")
 		end
 		state.setupConnections.dead = char:GetAttributeChangedSignal("Dead"):Connect(function()
+			print("[DeathClient] Dead attribute changed to:", char:GetAttribute("Dead"))
 			if char:GetAttribute("Dead") then
-				fireOnce()
+				fireOnce("attribute-change")
 			end
 		end)
+		print("[DeathClient] death listeners installed for", char.Name)
 	end
 
 	function DeathClient:Init()
