@@ -357,13 +357,18 @@ return function(Client)
 	end
 
 	function ClientChar.Init()
-		if player.Character then
+		local function setupForCharacter(char)
+			char:WaitForChild("Humanoid", 10)
+			char:WaitForChild("HumanoidRootPart", 10)
 			ClientChar.CreateEntity()
 			task.spawn(ClientChar.CharSpawn)
 		end
-		player.CharacterAdded:Connect(function()
-			ClientChar.CreateEntity()
-			task.spawn(ClientChar.CharSpawn)
+
+		if player.Character then
+			task.spawn(setupForCharacter, player.Character)
+		end
+		player.CharacterAdded:Connect(function(char)
+			setupForCharacter(char)
 		end)
 	end
 
