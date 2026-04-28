@@ -680,12 +680,21 @@ return function(Client)
 		local function persistGui(gui)
 			if gui:IsA("ScreenGui") and gui.ResetOnSpawn then
 				gui.ResetOnSpawn = false
+				print("[DeathClient] ResetOnSpawn=false on", gui.Name)
 			end
 		end
 		for _, child in ipairs(playerGui:GetChildren()) do
 			persistGui(child)
 		end
 		playerGui.ChildAdded:Connect(persistGui)
+
+		local StarterGui = game:GetService("StarterGui")
+		for _, child in ipairs(StarterGui:GetChildren()) do
+			if child:IsA("ScreenGui") and child.ResetOnSpawn then
+				child.ResetOnSpawn = false
+				print("[DeathClient] StarterGui ResetOnSpawn=false on", child.Name)
+			end
+		end
 
 		ensureLightingEffects()
 
