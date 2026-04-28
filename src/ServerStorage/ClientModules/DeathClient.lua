@@ -8,6 +8,7 @@ return function(Client)
 	local ReplicatedStorage = game:GetService("ReplicatedStorage")
 	local Debris = game:GetService("Debris")
 	local ContentProvider = game:GetService("ContentProvider")
+	local RunService = game:GetService("RunService")
 
 	local camera = workspace.CurrentCamera
 
@@ -459,6 +460,10 @@ return function(Client)
 	end
 
 	local function playRespawnTransition(newHumanoid)
+		if state.cameraLockConn then
+			state.cameraLockConn:Disconnect()
+			state.cameraLockConn = nil
+		end
 		camera.CameraType = Enum.CameraType.Custom
 		camera.CameraSubject = newHumanoid
 
@@ -526,6 +531,12 @@ return function(Client)
 		if camPart then
 			camera.CameraType = Enum.CameraType.Scriptable
 			camera.CFrame = camPart.CFrame
+			if state.cameraLockConn then state.cameraLockConn:Disconnect() end
+			state.cameraLockConn = RunService.RenderStepped:Connect(function()
+				if camPart and camPart.Parent then
+					camera.CFrame = camPart.CFrame
+				end
+			end)
 		end
 
 		setupViewports()
