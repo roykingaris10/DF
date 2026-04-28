@@ -30,10 +30,22 @@ return function(Client)
 
 	local function findRefs(playerGui)
 		local gui = playerGui:FindFirstChild("DeathScreen")
-		if not gui then return false end
+		if not gui then
+			print("[DeathClient] findRefs: DeathScreen not in PlayerGui. PlayerGui children:")
+			for _, c in ipairs(playerGui:GetChildren()) do
+				print("   -", c.Name, "(" .. c.ClassName .. ")")
+			end
+			return false
+		end
 
 		local deathFrame = gui:FindFirstChild("DeathFrame")
-		if not deathFrame then return false end
+		if not deathFrame then
+			print("[DeathClient] findRefs: DeathScreen has no DeathFrame. DeathScreen children:")
+			for _, c in ipairs(gui:GetChildren()) do
+				print("   -", c.Name, "(" .. c.ClassName .. ")")
+			end
+			return false
+		end
 
 		refs.gui = gui
 		refs.deathFrame = deathFrame
