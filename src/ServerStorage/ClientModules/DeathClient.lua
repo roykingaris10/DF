@@ -459,6 +459,28 @@ return function(Client)
 		end
 	end
 
+	local function hideOtherGuis()
+		state.hiddenGuis = {}
+		local pg = state.gui and state.gui.Parent
+		if not pg then return end
+		for _, child in ipairs(pg:GetChildren()) do
+			if child:IsA("ScreenGui") and child ~= state.gui and child.Enabled then
+				state.hiddenGuis[child] = true
+				child.Enabled = false
+			end
+		end
+	end
+
+	local function restoreOtherGuis()
+		if not state.hiddenGuis then return end
+		for gui in pairs(state.hiddenGuis) do
+			if gui and gui.Parent then
+				gui.Enabled = true
+			end
+		end
+		state.hiddenGuis = nil
+	end
+
 	local function playRespawnTransition(newHumanoid)
 		if state.cameraLockConn then
 			state.cameraLockConn:Disconnect()
@@ -482,28 +504,6 @@ return function(Client)
 		resetUI()
 		state.awaitingRespawn = false
 		state.isAnimating = false
-	end
-
-	local function hideOtherGuis()
-		state.hiddenGuis = {}
-		local pg = state.gui and state.gui.Parent
-		if not pg then return end
-		for _, child in ipairs(pg:GetChildren()) do
-			if child:IsA("ScreenGui") and child ~= state.gui and child.Enabled then
-				state.hiddenGuis[child] = true
-				child.Enabled = false
-			end
-		end
-	end
-
-	local function restoreOtherGuis()
-		if not state.hiddenGuis then return end
-		for gui in pairs(state.hiddenGuis) do
-			if gui and gui.Parent then
-				gui.Enabled = true
-			end
-		end
-		state.hiddenGuis = nil
 	end
 
 	local function onDeath()
