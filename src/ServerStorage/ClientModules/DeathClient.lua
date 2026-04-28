@@ -635,26 +635,34 @@ return function(Client)
 		local playerGui = player:WaitForChild("PlayerGui", 30)
 		if not playerGui then warn("[DeathClient] PlayerGui not found") return end
 
-		local ok = false
-		for _ = 1, 30 do
-			if findRefs(playerGui) then ok = true break end
-			task.wait(0.5)
-		end
-		if not ok then
-			warn("[DeathClient] DeathScreen GUI not found in PlayerGui — skipping init")
-			return
-		end
-
 		ensureLightingEffects()
-		buildFlipbookFrames()
-		loadAssets()
 
-		if player.Character then
-			setupCharacter(player.Character)
+		local function tryFinishSetup()
+			if not findRefs(playerGui) then return false end
+			buildFlipbookFrames()
+			loadAssets()
+
+			if player.Character then
+				setupCharacter(player.Character)
+			end
+			state.setupConnections.charAdded = player.CharacterAdded:Connect(setupCharacter)
+
+			print("[DeathClient] Initialized — DeathScreen found and listeners active")
+			return true
 		end
-		state.setupConnections.charAdded = player.CharacterAdded:Connect(setupCharacter)
 
-		print("[DeathClient] Initialized")
+		if tryFinishSetup() then return end
+
+		warn("[DeathClient] DeathScreen not in PlayerGui yet — watching for it")
+		local conn
+		conn = playerGui.ChildAdded:Connect(function(child)
+			if child.Name == "DeathScreen" then
+				task.wait()
+				if tryFinishSetup() and conn then
+					conn:Disconnect()
+				end
+			end
+		end)
 	end
 
 	return DeathClient
