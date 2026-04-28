@@ -438,6 +438,7 @@ return function(Client)
 
 		cleanupViewports()
 		if refs.deathFrame then refs.deathFrame.Visible = false end
+		if refs.gui then refs.gui.Enabled = false end
 	end
 
 	local function getKillerName()
@@ -520,6 +521,7 @@ return function(Client)
 
 		playDeathSounds()
 
+		if refs.gui then refs.gui.Enabled = true end
 		if refs.deathFrame then refs.deathFrame.Visible = true end
 		if refs.topEye then refs.topEye.Visible = true end
 		if refs.bottomEye then refs.bottomEye.Visible = true end
