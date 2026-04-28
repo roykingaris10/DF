@@ -702,12 +702,28 @@ return function(Client)
 		UpdateCombatTag()
 		setupBeliAnimation()
 		--UpdateBeli()
-		player.Character:GetAttributeChangedSignal("Health"):Connect(UpdateHealth)
-		player.Character:GetAttributeChangedSignal("Will"):Connect(UpdateWill)
-		player.Character:GetAttributeChangedSignal("Stamina"):Connect(UpdateStamina)
-		player.Character:GetAttributeChangedSignal("Posture"):Connect(UpdatePosture)
-		player.Character:GetAttributeChangedSignal("Hunger"):Connect(UpdateHunger)
-		player.Character:GetAttributeChangedSignal("InCombatTick"):Connect(UpdateCombatTag)
+
+		local statSignals = {}
+		local function bindStatSignals(char)
+			for _, conn in ipairs(statSignals) do conn:Disconnect() end
+			table.clear(statSignals)
+			if not char then return end
+			table.insert(statSignals, char:GetAttributeChangedSignal("Health"):Connect(UpdateHealth))
+			table.insert(statSignals, char:GetAttributeChangedSignal("Will"):Connect(UpdateWill))
+			table.insert(statSignals, char:GetAttributeChangedSignal("Stamina"):Connect(UpdateStamina))
+			table.insert(statSignals, char:GetAttributeChangedSignal("Posture"):Connect(UpdatePosture))
+			table.insert(statSignals, char:GetAttributeChangedSignal("Hunger"):Connect(UpdateHunger))
+			table.insert(statSignals, char:GetAttributeChangedSignal("InCombatTick"):Connect(UpdateCombatTag))
+			UpdateHealth()
+			UpdateWill()
+			UpdateStamina()
+			UpdatePosture()
+			UpdateHunger()
+			UpdateCombatTag()
+		end
+
+		bindStatSignals(player.Character)
+		player.CharacterAdded:Connect(bindStatSignals)
 	--	player.StatFolder.UserFolder:GetAttributeChangedSignal("Beli"):Connect(UpdateBeli)
 		
 		local PostureConn 
