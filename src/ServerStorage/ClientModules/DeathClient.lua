@@ -30,22 +30,10 @@ return function(Client)
 
 	local function findRefs(playerGui)
 		local gui = playerGui:FindFirstChild("DeathScreen")
-		if not gui then
-			print("[DeathClient] findRefs: DeathScreen not in PlayerGui. PlayerGui children:")
-			for _, c in ipairs(playerGui:GetChildren()) do
-				print("   -", c.Name, "(" .. c.ClassName .. ")")
-			end
-			return false
-		end
+		if not gui then return false end
 
 		local deathFrame = gui:FindFirstChild("DeathFrame")
-		if not deathFrame then
-			print("[DeathClient] findRefs: DeathScreen has no DeathFrame. DeathScreen children:")
-			for _, c in ipairs(gui:GetChildren()) do
-				print("   -", c.Name, "(" .. c.ClassName .. ")")
-			end
-			return false
-		end
+		if not deathFrame then return false end
 
 		refs.gui = gui
 		refs.deathFrame = deathFrame
@@ -58,23 +46,6 @@ return function(Client)
 		refs.infoFrame = deathFrame:FindFirstChild("InfoFrame")
 		refs.imageLabel = deathFrame:FindFirstChild("ImageLabel")
 		refs.viewportFrame = deathFrame:FindFirstChild("ViewportFrame")
-
-		print("[DeathClient] DeathFrame children resolved:")
-		print("   Top:", refs.topEye and "OK" or "MISSING")
-		print("   Bottom:", refs.bottomEye and "OK" or "MISSING")
-		print("   Dark:", refs.dark and "OK" or "MISSING")
-		print("   Flipbook:", refs.flipbook and "OK" or "MISSING")
-		print("   DivLine:", refs.divLine and "OK" or "MISSING")
-		print("   DeathText:", refs.deathText and "OK" or "MISSING")
-		print("   InfoFrame:", refs.infoFrame and "OK" or "MISSING")
-		print("   ImageLabel:", refs.imageLabel and "OK" or "MISSING")
-		print("   ViewportFrame:", refs.viewportFrame and "OK" or "MISSING")
-		if not (refs.topEye and refs.bottomEye and refs.dark and refs.flipbook) then
-			print("[DeathClient] DeathFrame actual children:")
-			for _, c in ipairs(deathFrame:GetChildren()) do
-				print("   -", c.Name, "(" .. c.ClassName .. ")")
-			end
-		end
 
 		if refs.infoFrame then
 			refs.slainByLabel = refs.infoFrame:FindFirstChild("SlainedBy")
@@ -508,7 +479,6 @@ return function(Client)
 	end
 
 	local function onDeath()
-		print("[DeathClient] onDeath START isAnimating=", state.isAnimating)
 		if state.isAnimating then return end
 		state.isAnimating = true
 		state.awaitingRespawn = true
@@ -532,7 +502,7 @@ return function(Client)
 		end
 
 		playFlipbook()
-		print("[DeathClient] flipbook started")
+
 
 		if refs.divLine then refs.divLine.Visible = false end
 		if refs.deathText then refs.deathText.Visible = false end
@@ -544,7 +514,7 @@ return function(Client)
 		if cc then tween(cc, 2, {Saturation = -1}, Enum.EasingStyle.Linear) end
 
 		flutterSequence()
-		print("[DeathClient] flutter complete")
+
 
 		tweenEyelids(0.5, 0.4, Enum.EasingStyle.Quart)
 		if refs.dark then tween(refs.dark, 0.4, {BackgroundTransparency = 0}, Enum.EasingStyle.Quad) end
@@ -559,7 +529,7 @@ return function(Client)
 		end
 
 		setupViewports()
-		print("[DeathClient] viewports setup")
+
 
 		if refs.slainByLabel then
 			refs.slainByLabel.RichText = true
@@ -581,7 +551,7 @@ return function(Client)
 		task.wait(0.3)
 
 		local fadeIn = 1.5
-		print("[DeathClient] fading in main UI")
+
 		if refs.dark then tween(refs.dark, 2, {BackgroundTransparency = 1}, Enum.EasingStyle.Quint) end
 		if refs.imageLabel then tween(refs.imageLabel, 0.4, {ImageTransparency = 0}, Enum.EasingStyle.Quad) end
 		if blur then tween(blur, 2, {Size = 0}, Enum.EasingStyle.Quad) end
@@ -598,7 +568,7 @@ return function(Client)
 		animateViewportsIn(8)
 
 		task.wait(6)
-		print("[DeathClient] fading out")
+
 
 		local fadeOut = 1
 		if refs.divLine and refs.divLine:IsA("ImageLabel") then
@@ -625,7 +595,7 @@ return function(Client)
 
 		task.wait(0.7)
 
-		print("[DeathClient] firing RequestRespawn")
+
 		if refs.requestRespawn then
 			refs.requestRespawn:FireServer()
 		else
@@ -634,13 +604,9 @@ return function(Client)
 	end
 
 	local function setupCharacter(char)
-		print("[DeathClient] setupCharacter for", char.Name, "awaitingRespawn=", state.awaitingRespawn)
 		state.character = char
 		state.humanoid = char:WaitForChild("Humanoid", 10)
-		if not state.humanoid then
-			warn("[DeathClient] no humanoid on character — bailing setupCharacter")
-			return
-		end
+		if not state.humanoid then return end
 
 		if state.awaitingRespawn then
 			playRespawnTransition(state.humanoid)
@@ -653,28 +619,20 @@ return function(Client)
 		trackDamage()
 
 		local fired = false
-		local function fireOnce(reason)
-			print("[DeathClient] fireOnce called via", reason, "fired=", fired)
+		local function fireOnce()
 			if fired then return end
 			fired = true
 			onDeath()
 		end
 
-		state.humanoid.Died:Once(function()
-			fireOnce("Humanoid.Died")
-		end)
+		state.humanoid.Died:Once(fireOnce)
 
-		print("[DeathClient] initial Dead attribute on char:", char:GetAttribute("Dead"))
 		if char:GetAttribute("Dead") then
-			fireOnce("initial-attribute")
+			fireOnce()
 		end
 		state.setupConnections.dead = char:GetAttributeChangedSignal("Dead"):Connect(function()
-			print("[DeathClient] Dead attribute changed to:", char:GetAttribute("Dead"))
-			if char:GetAttribute("Dead") then
-				fireOnce("attribute-change")
-			end
+			if char:GetAttribute("Dead") then fireOnce() end
 		end)
-		print("[DeathClient] death listeners installed for", char.Name)
 	end
 
 	function DeathClient:Init()
