@@ -637,6 +637,17 @@ return function(Client)
 
 		ensureLightingEffects()
 
+		local StarterGui = game:GetService("StarterGui")
+		if not playerGui:FindFirstChild("DeathScreen") then
+			local source = StarterGui:FindFirstChild("DeathScreen")
+			if source then
+				print("[DeathClient] Cloning DeathScreen from StarterGui into PlayerGui")
+				source:Clone().Parent = playerGui
+			else
+				warn("[DeathClient] DeathScreen not in StarterGui either")
+			end
+		end
+
 		local function tryFinishSetup()
 			if not findRefs(playerGui) then return false end
 			buildFlipbookFrames()
