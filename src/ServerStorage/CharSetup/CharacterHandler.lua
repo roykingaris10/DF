@@ -357,8 +357,14 @@ return function(Client)
 	end
 
 	function ClientChar.Init()
-		ClientChar.CreateEntity()
-		task.spawn(ClientChar.CharSpawn)
+		if player.Character then
+			ClientChar.CreateEntity()
+			task.spawn(ClientChar.CharSpawn)
+		end
+		player.CharacterAdded:Connect(function()
+			ClientChar.CreateEntity()
+			task.spawn(ClientChar.CharSpawn)
+		end)
 	end
 
 	return ClientChar end
