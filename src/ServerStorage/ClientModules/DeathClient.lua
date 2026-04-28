@@ -530,6 +530,7 @@ return function(Client)
 		end
 
 		playFlipbook()
+		print("[DeathClient] flipbook started")
 
 		if refs.divLine then refs.divLine.Visible = false end
 		if refs.deathText then refs.deathText.Visible = false end
@@ -541,6 +542,7 @@ return function(Client)
 		if cc then tween(cc, 2, {Saturation = -1}, Enum.EasingStyle.Linear) end
 
 		flutterSequence()
+		print("[DeathClient] flutter complete")
 
 		tweenEyelids(0.5, 0.4, Enum.EasingStyle.Quart)
 		if refs.dark then tween(refs.dark, 0.4, {BackgroundTransparency = 0}, Enum.EasingStyle.Quad) end
@@ -555,6 +557,7 @@ return function(Client)
 		end
 
 		setupViewports()
+		print("[DeathClient] viewports setup")
 
 		if refs.slainByLabel then
 			refs.slainByLabel.RichText = true
@@ -566,7 +569,7 @@ return function(Client)
 
 		if refs.divLine then
 			refs.divLine.Visible = true
-			refs.divLine.ImageTransparency = 1
+			if refs.divLine:IsA("ImageLabel") then refs.divLine.ImageTransparency = 1 end
 		end
 		if refs.deathText then
 			refs.deathText.Visible = true
@@ -576,13 +579,16 @@ return function(Client)
 		task.wait(0.3)
 
 		local fadeIn = 1.5
+		print("[DeathClient] fading in main UI")
 		if refs.dark then tween(refs.dark, 2, {BackgroundTransparency = 1}, Enum.EasingStyle.Quint) end
 		if refs.imageLabel then tween(refs.imageLabel, 0.4, {ImageTransparency = 0}, Enum.EasingStyle.Quad) end
 		if blur then tween(blur, 2, {Size = 0}, Enum.EasingStyle.Quad) end
 		if cc then tween(cc, 2, {Saturation = 0}, Enum.EasingStyle.Quad) end
 		tweenEyelids(0, fadeIn, Enum.EasingStyle.Quint)
 
-		if refs.divLine then tween(refs.divLine, fadeIn, {ImageTransparency = 0}, Enum.EasingStyle.Sine) end
+		if refs.divLine and refs.divLine:IsA("ImageLabel") then
+			tween(refs.divLine, fadeIn, {ImageTransparency = 0}, Enum.EasingStyle.Sine)
+		end
 		if refs.deathText then tween(refs.deathText, fadeIn, {TextTransparency = 0}, Enum.EasingStyle.Sine) end
 		if refs.slainByLabel then tween(refs.slainByLabel, fadeIn, {TextTransparency = 0}, Enum.EasingStyle.Sine) end
 		fadeInFlipbook(fadeIn)
@@ -590,9 +596,12 @@ return function(Client)
 		animateViewportsIn(8)
 
 		task.wait(6)
+		print("[DeathClient] fading out")
 
 		local fadeOut = 1
-		if refs.divLine then tween(refs.divLine, fadeOut, {ImageTransparency = 1}, Enum.EasingStyle.Sine) end
+		if refs.divLine and refs.divLine:IsA("ImageLabel") then
+			tween(refs.divLine, fadeOut, {ImageTransparency = 1}, Enum.EasingStyle.Sine)
+		end
 		if refs.deathText then tween(refs.deathText, fadeOut, {TextTransparency = 1}, Enum.EasingStyle.Sine) end
 		if refs.slainByLabel then tween(refs.slainByLabel, fadeOut, {TextTransparency = 1}, Enum.EasingStyle.Sine) end
 		if refs.imageLabel then tween(refs.imageLabel, fadeOut, {ImageTransparency = 1}, Enum.EasingStyle.Sine) end
@@ -614,6 +623,7 @@ return function(Client)
 
 		task.wait(0.7)
 
+		print("[DeathClient] firing RequestRespawn")
 		if refs.requestRespawn then
 			refs.requestRespawn:FireServer()
 		else
