@@ -73,6 +73,7 @@ end
 -- Disable Backpack Logic
 game:GetService("StarterGui"):SetCoreGuiEnabled(Enum.CoreGuiType.Backpack,false)
 game:GetService("StarterGui"):SetCoreGuiEnabled(Enum.CoreGuiType.PlayerList, false)
+game:GetService("StarterGui"):SetCoreGuiEnabled(Enum.CoreGuiType.Health, false)
 
 local FoldersForLoading = {script.GlobalModules, script.GameInfo, script.ClientNetwork, script.CharSetup, script.ClientModules }
 local Startingtable = {script.CharSetup.CharacterHandler,script.CharSetup.Inputter,script.ClientNetwork.ClientNetwork,

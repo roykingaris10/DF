@@ -149,6 +149,14 @@ function Characters:Create(NoPositioning: boolean?)
 	
 	self.Parent.Animator:Cache();
 	if self.Parent.player then
+		local sm = self.Parent.StatManager
+		if sm then
+			sm.Health = sm.MaxHealth
+			sm.Stamina = sm.MaxStamina
+			sm.Will = sm.MaxWill
+			sm.Hunger = sm.MaxHunger
+			sm.Posture = 0
+		end
 		print("[CharacterManager] Create -> SetupLooks for", self.Parent.player.Name)
 		local ok, err = pcall(function()
 			self.Parent.EquipmentManager:SetupLooks()
