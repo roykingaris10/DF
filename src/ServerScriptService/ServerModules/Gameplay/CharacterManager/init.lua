@@ -149,7 +149,13 @@ function Characters:Create(NoPositioning: boolean?)
 	
 	self.Parent.Animator:Cache();
 	if self.Parent.player then
-		self.Parent.EquipmentManager:SetupLooks()
+		print("[CharacterManager] Create -> SetupLooks for", self.Parent.player.Name)
+		local ok, err = pcall(function()
+			self.Parent.EquipmentManager:SetupLooks()
+		end)
+		if not ok then
+			warn("[CharacterManager] SetupLooks failed:", err)
+		end
 		
 		Network:post("ClientEvent",self.Parent.player, "SpawnSetup",
 			self.Parent.InventoryManager:GetEquippedSlotInfo() or false,

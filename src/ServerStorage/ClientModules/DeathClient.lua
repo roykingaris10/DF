@@ -470,6 +470,7 @@ return function(Client)
 		stopFlipbook()
 		cleanupViewports()
 		stopDeathSounds()
+		restoreOtherGuis()
 
 		if refs.dark then tween(refs.dark, 1.0, {BackgroundTransparency = 1}, Enum.EasingStyle.Quint) end
 		if blur then tween(blur, 1.0, {Size = 0}, Enum.EasingStyle.Quad) end
@@ -481,6 +482,28 @@ return function(Client)
 		resetUI()
 		state.awaitingRespawn = false
 		state.isAnimating = false
+	end
+
+	local function hideOtherGuis()
+		state.hiddenGuis = {}
+		local pg = state.gui and state.gui.Parent
+		if not pg then return end
+		for _, child in ipairs(pg:GetChildren()) do
+			if child:IsA("ScreenGui") and child ~= state.gui and child.Enabled then
+				state.hiddenGuis[child] = true
+				child.Enabled = false
+			end
+		end
+	end
+
+	local function restoreOtherGuis()
+		if not state.hiddenGuis then return end
+		for gui in pairs(state.hiddenGuis) do
+			if gui and gui.Parent then
+				gui.Enabled = true
+			end
+		end
+		state.hiddenGuis = nil
 	end
 
 	local function onDeath()
@@ -498,6 +521,7 @@ return function(Client)
 
 		if refs.gui then refs.gui.Enabled = true end
 		if refs.deathFrame then refs.deathFrame.Visible = true end
+		hideOtherGuis()
 		if refs.topEye then refs.topEye.Visible = true end
 		if refs.bottomEye then refs.bottomEye.Visible = true end
 		setEyelids(0)
