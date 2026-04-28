@@ -59,6 +59,23 @@ return function(Client)
 		refs.imageLabel = deathFrame:FindFirstChild("ImageLabel")
 		refs.viewportFrame = deathFrame:FindFirstChild("ViewportFrame")
 
+		print("[DeathClient] DeathFrame children resolved:")
+		print("   Top:", refs.topEye and "OK" or "MISSING")
+		print("   Bottom:", refs.bottomEye and "OK" or "MISSING")
+		print("   Dark:", refs.dark and "OK" or "MISSING")
+		print("   Flipbook:", refs.flipbook and "OK" or "MISSING")
+		print("   DivLine:", refs.divLine and "OK" or "MISSING")
+		print("   DeathText:", refs.deathText and "OK" or "MISSING")
+		print("   InfoFrame:", refs.infoFrame and "OK" or "MISSING")
+		print("   ImageLabel:", refs.imageLabel and "OK" or "MISSING")
+		print("   ViewportFrame:", refs.viewportFrame and "OK" or "MISSING")
+		if not (refs.topEye and refs.bottomEye and refs.dark and refs.flipbook) then
+			print("[DeathClient] DeathFrame actual children:")
+			for _, c in ipairs(deathFrame:GetChildren()) do
+				print("   -", c.Name, "(" .. c.ClassName .. ")")
+			end
+		end
+
 		if refs.infoFrame then
 			refs.slainByLabel = refs.infoFrame:FindFirstChild("SlainedBy")
 		end
@@ -473,13 +490,18 @@ return function(Client)
 		camera.CameraType = Enum.CameraType.Custom
 		camera.CameraSubject = newHumanoid
 
+		stopFlipbook()
+		cleanupViewports()
+		stopDeathSounds()
+
 		if refs.dark then tween(refs.dark, 1.0, {BackgroundTransparency = 1}, Enum.EasingStyle.Quint) end
 		if blur then tween(blur, 1.0, {Size = 0}, Enum.EasingStyle.Quad) end
+		if cc then tween(cc, 1.0, {Saturation = 0}, Enum.EasingStyle.Quad) end
 		tweenEyelids(0, 0.8, Enum.EasingStyle.Quint)
 
 		task.wait(1.0)
 
-		if refs.deathFrame then refs.deathFrame.Visible = false end
+		resetUI()
 		state.awaitingRespawn = false
 		state.isAnimating = false
 	end
