@@ -31,9 +31,15 @@ end
 
 RequestRespawn.OnServerEvent:Connect(function(player)
 	local entity = getEntity(player)
+	print("[DeathRespawnService] RequestRespawn from", player.Name,
+		"entity=", entity and "found" or "nil",
+		"entity.Character=", entity and entity.Character and "ok" or "nil",
+		"Respawn method=", entity and entity.Character and entity.Character.Respawn and "ok" or "nil")
 	if entity and entity.Character and entity.Character.Respawn then
 		entity.Character:Respawn()
+		print("[DeathRespawnService] called Character:Respawn() — RespawnEvent fired")
 	else
+		warn("[DeathRespawnService] falling back to LoadCharacter — BindSpawn loop won't run Create")
 		player:LoadCharacter()
 	end
 	RespawnReady:FireClient(player)
