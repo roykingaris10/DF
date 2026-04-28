@@ -677,6 +677,16 @@ return function(Client)
 		local playerGui = player:WaitForChild("PlayerGui", 30)
 		if not playerGui then warn("[DeathClient] PlayerGui not found") return end
 
+		local function persistGui(gui)
+			if gui:IsA("ScreenGui") and gui.ResetOnSpawn then
+				gui.ResetOnSpawn = false
+			end
+		end
+		for _, child in ipairs(playerGui:GetChildren()) do
+			persistGui(child)
+		end
+		playerGui.ChildAdded:Connect(persistGui)
+
 		ensureLightingEffects()
 
 		local StarterGui = game:GetService("StarterGui")
