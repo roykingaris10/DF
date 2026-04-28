@@ -600,7 +600,24 @@ return function(Client)
 		end
 
 		trackDamage()
-		state.humanoid.Died:Once(onDeath)
+
+		local fired = false
+		local function fireOnce()
+			if fired then return end
+			fired = true
+			onDeath()
+		end
+
+		state.humanoid.Died:Once(fireOnce)
+
+		if char:GetAttribute("Dead") then
+			fireOnce()
+		end
+		state.setupConnections.dead = char:GetAttributeChangedSignal("Dead"):Connect(function()
+			if char:GetAttribute("Dead") then
+				fireOnce()
+			end
+		end)
 	end
 
 	function DeathClient:Init()
