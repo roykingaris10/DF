@@ -282,6 +282,7 @@ function QuestService:AbandonQuest(player, questId)
 	if not profile or profile.currentQuests[questId] == nil then return false, "not active" end
 	profile.currentQuests[questId] = nil
 	broadcast(player, { Kind = "Abandoned", QuestId = questId })
+	QuestService:SyncToClient(player)
 	return true, "abandoned"
 end
 
@@ -304,6 +305,7 @@ function QuestService:CompleteQuest(player, questId)
 
 	distributeRewards(player, quest)
 	broadcast(player, { Kind = "Completed", QuestId = questId })
+	QuestService:SyncToClient(player)
 	return true, "completed"
 end
 
@@ -312,6 +314,7 @@ function QuestService:FailQuest(player, questId, reason)
 	if not profile or profile.currentQuests[questId] == nil then return false end
 	profile.currentQuests[questId] = nil
 	broadcast(player, { Kind = "Failed", QuestId = questId, Reason = reason or "failed" })
+	QuestService:SyncToClient(player)
 	return true
 end
 
