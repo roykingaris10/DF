@@ -259,6 +259,13 @@ print("NFNFVMV")
 	if LastHit and LastHit.Tick then
 		self:KillFeed(LastHit)
 	end
+	if LastHit and LastHit.Person and LastHit.Person.player and Server.QuestService and Server.QuestService.RegisterEvent then
+		local victimRig = self.Rig
+		local target = victimRig and (victimRig:GetAttribute("QuestTarget") or victimRig.Name)
+		if target then
+			Server.QuestService:RegisterEvent(LastHit.Person.player, "Kill", target, 1)
+		end
+	end
 	if self.Parent.ActionManager and self.Parent.ActionManager.DragEnd then
 		self.Parent.ActionManager:DragEnd()
 	end

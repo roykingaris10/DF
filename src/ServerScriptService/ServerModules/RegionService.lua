@@ -134,6 +134,13 @@ end
 function RegionService:OnRegionChanged(player, oldRegion, oldType, newRegion, newType)
 	if newRegion then
 		print(string.format("[RegionService] %s entered %s (%s)", player.Name, newRegion, newType))
+		local OkFramework = game:GetService("ServerScriptService"):FindFirstChild("OkFramework")
+		if OkFramework then
+			local ok, Server = pcall(require, OkFramework)
+			if ok and Server and Server.QuestService and Server.QuestService.RegisterEvent then
+				Server.QuestService:RegisterEvent(player, "Reach", newRegion, 1)
+			end
+		end
 	elseif oldRegion then
 		print(string.format("[RegionService] %s left %s (%s)", player.Name, oldRegion, oldType))
 	end

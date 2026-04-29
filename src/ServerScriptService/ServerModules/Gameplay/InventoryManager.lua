@@ -165,6 +165,11 @@ function InventoryManager:AddItem(Name: string, CustomData: {any}?)
 	local ItemData = LibraryInfo[Name]
 	if not ItemData then return warn("MISSING ITEM INFO//"..Name) end;
 	local itemId = "Item_"..game.HttpService:GenerateGUID(false)
+
+	local addAmount = (CustomData and CustomData.Amount) or 1
+	if Server.QuestService and Server.QuestService.RegisterEvent and self.Parent and self.Parent.player then
+		Server.QuestService:RegisterEvent(self.Parent.player, "Collect", Name, addAmount)
+	end
 	
 	local newItem = {
 		Name = Name;

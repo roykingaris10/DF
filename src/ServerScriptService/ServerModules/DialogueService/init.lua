@@ -53,6 +53,10 @@ function DialogueService.GetDialogue(player, NPC)
 
 	local profile = entity.SlotProfile
 
+	if Server.QuestService and Server.QuestService.RegisterEvent then
+		Server.QuestService:RegisterEvent(player, "Talk", NPC.Name, 1)
+	end
+
 	if DialogueService.QuestDialogues[NPC.Name] then
 		for _, questDialogue in pairs(DialogueService.QuestDialogues[NPC.Name]) do
 			local questName = questDialogue.Name
@@ -61,18 +65,26 @@ function DialogueService.GetDialogue(player, NPC)
 				continue
 			end
 
-			if profile.currentQuests[questName] ~= nil then
-				local questInfo = Server.QuestInfo[questName]
+			local current = profile.currentQuests[questName]
+			if current ~= nil then
+				local questInfo = Server.QuestInfo and Server.QuestInfo[questName]
 
-				if type(profile.currentQuests[questName]) == 'number' then
-					if questInfo.Requirement == profile.currentQuests[questName] then
+				if type(current) == "table" and questInfo then
+					local lastStageIdx = questInfo.Stages and #questInfo.Stages or 1
+					if current.Stage > lastStageIdx then
+						return true, questDialogue.Completed
+					else
+						return true, questDialogue.InProgress
+					end
+				elseif type(current) == "number" and questInfo then
+					if questInfo.Requirement == current then
 						table.insert(profile.questsCompleted, questName)
 						return true, questDialogue.Completed
 					else
 						return true, questDialogue.InProgress
 					end
-				elseif type(profile.currentQuests[questName]) == 'boolean' then
-					if profile.currentQuests[questName] then
+				elseif type(current) == "boolean" then
+					if current then
 						table.insert(profile.questsCompleted, questName)
 						return true, questDialogue.Completed
 					else
@@ -109,15 +121,25 @@ function DialogueService.ProcessAction(player, action, data)
 
 	if action == "AcceptQuest" then
 		local questName = data.questName
-		if not Server.QuestInfo[questName] then return false, "Quest not found" end
-
-		if Server.QuestInfo[questName].Requirement then
-			profile.currentQuests[questName] = 0
-		else
-			profile.currentQuests[questName] = false
+		if not (Server.QuestInfo and Server.QuestInfo[questName]) then
+			return false, "Quest not found"
 		end
+		if Server.QuestService and Server.QuestService.AcceptQuest then
+			return Server.QuestService:AcceptQuest(player, questName)
+		end
+		return false, "QuestService unavailable"
 
-		return true, "Quest accepted"
+	elseif action == "TurnInQuest" then
+		if Server.QuestService and Server.QuestService.CompleteQuest then
+			return Server.QuestService:CompleteQuest(player, data.questName)
+		end
+		return false, "QuestService unavailable"
+
+	elseif action == "AbandonQuest" then
+		if Server.QuestService and Server.QuestService.AbandonQuest then
+			return Server.QuestService:AbandonQuest(player, data.questName)
+		end
+		return false, "QuestService unavailable"
 
 	elseif action == "JoinFaction" then
 		local factionId = data.factionId
