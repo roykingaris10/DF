@@ -174,19 +174,19 @@ QuestInfo.CrewRaid = {
 	Repeatable = true,
 }
 
-QuestInfo.JogoTraining = {
-	Id = "JogoTraining",
+QuestInfo.DummyTraining = {
+	Id = "DummyTraining",
 	Name = "Combat Training",
-	Description = "Hone your fists on a few Jogos.",
+	Description = "Hone your fists on a few training dummies.",
 	Category = "Normal",
 	Giver = "TrainerSign",
 	TurnInTo = "TrainerSign",
 
 	Stages = {
 		{
-			Title = "Defeat Jogos",
+			Title = "Defeat training dummies",
 			Objectives = {
-				{ Id = "jogo_kills", Type = "Kill", Target = "Jogo", Count = 3, Description = "Defeat Jogos" },
+				{ Id = "dummy_kills", Type = "Kill", Target = "Dummy", Count = 3, Description = "Defeat Training Dummies" },
 			},
 		},
 	},
@@ -200,6 +200,35 @@ QuestInfo.JogoTraining = {
 	RewardDistribution = "Solo",
 	Repeatable = true,
 	TrackedDefault = true,
+}
+
+QuestInfo.SpeedRun = {
+	Id = "SpeedRun",
+	Name = "Speed Trial",
+	Description = "Reach Logue Town within the time limit.",
+	Category = "Special",
+	Giver = "Wanderer",
+	TurnInTo = "Wanderer",
+
+	TimeLimit = 120,
+
+	Stages = {
+		{
+			Title = "Reach Logue Town in time",
+			Objectives = {
+				{ Id = "speed_reach", Type = "Reach", Target = "LogueTown", Count = 1, Description = "Get to Logue Town" },
+			},
+		},
+	},
+
+	Rewards = {
+		{ Type = "XP", Track = "Exploration", Amount = 200 },
+		{ Type = "Beli", Amount = 300 },
+	},
+
+	ProgressScope = "Solo",
+	RewardDistribution = "Solo",
+	Repeatable = true,
 }
 
 QuestInfo.SnackRun = {
@@ -265,9 +294,9 @@ QuestInfo.BoundaryHunter = {
 
 	Stages = {
 		{
-			Title = "Defeat Jogos",
+			Title = "Defeat training dummies",
 			Objectives = {
-				{ Id = "trial_kills", Type = "Kill", Target = "Jogo", Count = 5, Description = "Defeat Jogos" },
+				{ Id = "trial_kills", Type = "Kill", Target = "Dummy", Count = 5, Description = "Defeat Training Dummies" },
 			},
 		},
 		{

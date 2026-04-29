@@ -93,9 +93,11 @@ if OkFramework then
 		questCmd.Triggered:Connect(function(textSource, msg)
 			local p = Players:GetPlayerByUserId(textSource.UserId)
 			if not p then return end
-			local sub, rest = msg:match("^/%S+%s+(%S+)%s*(.-)%s*$")
+			local args = {}
+			for token in msg:gmatch("%S+") do table.insert(args, token) end
+			local sub = args[2]
 			if not sub then
-				print("[/quest] usage: /quest list | /quest accept <id> | /quest complete <id> | /quest abandon <id>")
+				print("[/quest] usage: list | accept <id> | complete <id> | abandon <id> | progress <type> <target> [amount]")
 				return
 			end
 			if sub == "list" then
@@ -103,17 +105,21 @@ if OkFramework then
 				for id in pairs(Server.QuestInfo or {}) do table.insert(names, id) end
 				table.sort(names)
 				print("[/quest] Quests: " .. table.concat(names, ", "))
-			elseif sub == "accept" and rest ~= "" then
-				local ok2, reason = Server.QuestService:AcceptQuest(p, rest)
-				print(string.format("[/quest accept %s] %s %s", rest, tostring(ok2), tostring(reason)))
-			elseif sub == "complete" and rest ~= "" then
-				local ok2, reason = Server.QuestService:CompleteQuest(p, rest)
-				print(string.format("[/quest complete %s] %s %s", rest, tostring(ok2), tostring(reason)))
-			elseif sub == "abandon" and rest ~= "" then
-				local ok2, reason = Server.QuestService:AbandonQuest(p, rest)
-				print(string.format("[/quest abandon %s] %s %s", rest, tostring(ok2), tostring(reason)))
+			elseif sub == "accept" and args[3] then
+				local ok2, reason = Server.QuestService:AcceptQuest(p, args[3])
+				print(string.format("[/quest accept %s] %s %s", args[3], tostring(ok2), tostring(reason)))
+			elseif sub == "complete" and args[3] then
+				local ok2, reason = Server.QuestService:CompleteQuest(p, args[3])
+				print(string.format("[/quest complete %s] %s %s", args[3], tostring(ok2), tostring(reason)))
+			elseif sub == "abandon" and args[3] then
+				local ok2, reason = Server.QuestService:AbandonQuest(p, args[3])
+				print(string.format("[/quest abandon %s] %s %s", args[3], tostring(ok2), tostring(reason)))
+			elseif sub == "progress" and args[3] and args[4] then
+				local amount = tonumber(args[5]) or 1
+				Server.QuestService:RegisterEvent(p, args[3], args[4], amount)
+				print(string.format("[/quest progress] fired %s/%s x%d", args[3], args[4], amount))
 			else
-				print("[/quest] usage: /quest list | /quest accept <id> | /quest complete <id> | /quest abandon <id>")
+				print("[/quest] usage: list | accept <id> | complete <id> | abandon <id> | progress <type> <target> [amount]")
 			end
 		end)
 	end)

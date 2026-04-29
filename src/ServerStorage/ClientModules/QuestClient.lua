@@ -386,6 +386,16 @@ return function(Client)
 		if selectedId then QuestClient:RenderDetails(selectedId) end
 	end
 
+	local function timeRemainingText(progress)
+		if not progress or not progress.ExpiresAt then return nil end
+		local remaining = progress.ExpiresAt - os.time()
+		if remaining <= 0 then return "Expired" end
+		local m = math.floor(remaining / 60)
+		local s = remaining % 60
+		if m > 0 then return string.format("Time left: %dm %ds", m, s) end
+		return string.format("Time left: %ds", s)
+	end
+
 	function QuestClient:RefreshTracker()
 		if not refs.tracker then return end
 		local id = trackedId
@@ -400,7 +410,10 @@ return function(Client)
 		if not quest then refs.tracker.Enabled = false return end
 		refs.tracker.Enabled = true
 		refs.trackerTitle.Text = quest.Name or id
-		refs.trackerBody.Text = objectiveSummary(quest, activeQuests[id])
+		local body = objectiveSummary(quest, activeQuests[id])
+		local timeStr = timeRemainingText(activeQuests[id])
+		if timeStr then body = body .. "\n" .. timeStr end
+		refs.trackerBody.Text = body
 	end
 
 	function QuestClient:Refresh()
@@ -524,6 +537,12 @@ return function(Client)
 			local quest = questDef(payload.QuestId)
 			notifyQuest("Abandoned: " .. ((quest and quest.Name) or payload.QuestId))
 			if trackedId == payload.QuestId then trackedId = nil end
+		elseif kind == "Failed" then
+			activeQuests[payload.QuestId] = nil
+			local quest = questDef(payload.QuestId)
+			local reason = payload.Reason == "time" and "ran out of time" or (payload.Reason or "failed")
+			notifyQuest("Failed: " .. ((quest and quest.Name) or payload.QuestId) .. " (" .. reason .. ")", true)
+			if trackedId == payload.QuestId then trackedId = nil end
 		end
 
 		QuestClient:Refresh()
@@ -568,6 +587,13 @@ return function(Client)
 				local completedOk, completed = pcall(function() return Network:get("Quest_GetCompleted") end)
 				if completedOk and completed then completedQuests = completed end
 				QuestClient:Refresh()
+				QuestClient:RefreshTracker()
+			end
+		end)
+
+		task.spawn(function()
+			while true do
+				task.wait(1)
 				QuestClient:RefreshTracker()
 			end
 		end)

@@ -42,6 +42,9 @@ local function makeProgressTable(quest)
 			progress.Objectives[obj.Id] = 0
 		end
 	end
+	if quest.TimeLimit and quest.TimeLimit > 0 then
+		progress.ExpiresAt = os.time() + quest.TimeLimit
+	end
 	return progress
 end
 
@@ -75,7 +78,7 @@ end
 
 local function broadcast(player, payload)
 	if Network and Network.post then
-		Network:post("ClientEvent", player, "QuestUpdate", payload)
+		Network:post("QuestUpdate", player, payload)
 	end
 end
 
@@ -304,6 +307,22 @@ function QuestService:CompleteQuest(player, questId)
 	return true, "completed"
 end
 
+function QuestService:FailQuest(player, questId, reason)
+	local profile = getProfile(player)
+	if not profile or profile.currentQuests[questId] == nil then return false end
+	profile.currentQuests[questId] = nil
+	broadcast(player, { Kind = "Failed", QuestId = questId, Reason = reason or "failed" })
+	return true
+end
+
+local function checkExpiration(player, profile, questId, progress)
+	if not progress or type(progress) ~= "table" or not progress.ExpiresAt then return false end
+	if os.time() < progress.ExpiresAt then return false end
+	profile.currentQuests[questId] = nil
+	broadcast(player, { Kind = "Failed", QuestId = questId, Reason = "time" })
+	return true
+end
+
 function QuestService:RegisterEvent(player, eventType, target, amount)
 	amount = amount or 1
 	local profile = getProfile(player)
@@ -312,6 +331,7 @@ function QuestService:RegisterEvent(player, eventType, target, amount)
 	local affectedScopes = {}
 
 	for questId, progress in pairs(profile.currentQuests) do
+		if checkExpiration(player, profile, questId, progress) then continue end
 		local quest = questDef(questId)
 		if quest and isProgressTable(progress) then
 			local stage = getStageData(quest, progress.Stage)
@@ -409,6 +429,20 @@ Players.PlayerAdded:Connect(function(player)
 	task.delay(2, function()
 		if player.Parent then QuestService:SyncToClient(player) end
 	end)
+end)
+
+task.spawn(function()
+	while true do
+		task.wait(5)
+		for _, player in ipairs(Players:GetPlayers()) do
+			local profile = getProfile(player)
+			if profile and profile.currentQuests then
+				for questId, progress in pairs(profile.currentQuests) do
+					checkExpiration(player, profile, questId, progress)
+				end
+			end
+		end
+	end
 end)
 
 return QuestService

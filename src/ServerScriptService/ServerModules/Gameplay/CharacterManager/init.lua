@@ -746,10 +746,12 @@ function Characters:SetCombatData(ValueName: string, Value: any,Duraton: number)
 end
 
 function Characters:SetAttribute(AttributeName: string, Value: any)
+	if not self.Rig or not self.Rig.Parent then return end
 	self.Rig:SetAttribute(AttributeName, Value);
 end;
 
 function Characters:GetAttribute(AttributeName: string)
+	if not self.Rig or not self.Rig.Parent then return nil end
 	return self.Rig:GetAttribute(AttributeName);
 end;
 
