@@ -174,4 +174,126 @@ QuestInfo.CrewRaid = {
 	Repeatable = true,
 }
 
+QuestInfo.JogoTraining = {
+	Id = "JogoTraining",
+	Name = "Combat Training",
+	Description = "Hone your fists on a few Jogos.",
+	Category = "Normal",
+	Giver = "TrainerSign",
+	TurnInTo = "TrainerSign",
+
+	Stages = {
+		{
+			Title = "Defeat Jogos",
+			Objectives = {
+				{ Id = "jogo_kills", Type = "Kill", Target = "Jogo", Count = 3, Description = "Defeat Jogos" },
+			},
+		},
+	},
+
+	Rewards = {
+		{ Type = "XP", Track = "Combat", Amount = 75 },
+		{ Type = "Beli", Amount = 50 },
+	},
+
+	ProgressScope = "Solo",
+	RewardDistribution = "Solo",
+	Repeatable = true,
+	TrackedDefault = true,
+}
+
+QuestInfo.SnackRun = {
+	Id = "SnackRun",
+	Name = "Snack Run",
+	Description = "Round up some watermelons for a hungry crew.",
+	Category = "Normal",
+	Giver = "Cook",
+	TurnInTo = "Cook",
+
+	Stages = {
+		{
+			Title = "Gather watermelons",
+			Objectives = {
+				{ Id = "watermelons", Type = "Collect", Target = "Watermelon", Count = 5, Description = "Collect Watermelons" },
+			},
+		},
+	},
+
+	Rewards = {
+		{ Type = "Beli", Amount = 75 },
+		{ Type = "XP", Track = "Exploration", Amount = 25 },
+	},
+
+	ProgressScope = "Solo",
+	RewardDistribution = "Solo",
+	Repeatable = true,
+}
+
+QuestInfo.LogueTownVisit = {
+	Id = "LogueTownVisit",
+	Name = "See the Town of Beginnings and Endings",
+	Description = "Travel to Logue Town to see the labour first-hand.",
+	Category = "Normal",
+	Giver = "Wanderer",
+	TurnInTo = "Wanderer",
+
+	Stages = {
+		{
+			Title = "Reach Logue Town",
+			Objectives = {
+				{ Id = "reach_logue", Type = "Reach", Target = "LogueTown", Count = 1, Description = "Enter Logue Town" },
+			},
+		},
+	},
+
+	Rewards = {
+		{ Type = "XP", Track = "Exploration", Amount = 100 },
+		{ Type = "Beli", Amount = 150 },
+	},
+
+	ProgressScope = "Solo",
+	RewardDistribution = "Solo",
+}
+
+QuestInfo.BoundaryHunter = {
+	Id = "BoundaryHunter",
+	Name = "Boundary Hunter",
+	Description = "A multi-leg trial across combat, travel, and conversation.",
+	Category = "Normal",
+	Giver = "TrialMaster",
+	TurnInTo = "TrialMaster",
+
+	Stages = {
+		{
+			Title = "Defeat Jogos",
+			Objectives = {
+				{ Id = "trial_kills", Type = "Kill", Target = "Jogo", Count = 5, Description = "Defeat Jogos" },
+			},
+		},
+		{
+			Title = "Travel to Logue Town",
+			Objectives = {
+				{ Id = "trial_travel", Type = "Reach", Target = "LogueTown", Count = 1, Description = "Reach Logue Town" },
+			},
+		},
+		{
+			Title = "Report to the Trial Master",
+			Objectives = {
+				{ Id = "trial_report", Type = "Talk", Target = "TrialMaster", Count = 1, Description = "Speak with the Trial Master" },
+			},
+		},
+	},
+
+	Rewards = {
+		{ Type = "XP", Track = "Combat", Amount = 200 },
+		{ Type = "XP", Track = "Exploration", Amount = 100 },
+		{ Type = "Beli", Amount = 500 },
+		{ Type = "Title", Title = "Boundary Hunter" },
+	},
+
+	ProgressScope = "Solo",
+	RewardDistribution = "Solo",
+}
+
 return QuestInfo
+

@@ -79,4 +79,44 @@ cmd.Triggered:Connect(function(textSource, message)
 	print("[/tp] " .. result)
 end)
 
+local OkFramework = game:GetService("ServerScriptService"):FindFirstChild("OkFramework")
+if OkFramework then
+	task.spawn(function()
+		local ok, Server = pcall(require, OkFramework)
+		if not ok or not Server then return end
+
+		local questCmd = Instance.new("TextChatCommand")
+		questCmd.Name = "DevQuestCommand"
+		questCmd.PrimaryAlias = "/quest"
+		questCmd.Parent = TextChatService
+
+		questCmd.Triggered:Connect(function(textSource, msg)
+			local p = Players:GetPlayerByUserId(textSource.UserId)
+			if not p then return end
+			local sub, rest = msg:match("^/%S+%s+(%S+)%s*(.-)%s*$")
+			if not sub then
+				print("[/quest] usage: /quest list | /quest accept <id> | /quest complete <id> | /quest abandon <id>")
+				return
+			end
+			if sub == "list" then
+				local names = {}
+				for id in pairs(Server.QuestInfo or {}) do table.insert(names, id) end
+				table.sort(names)
+				print("[/quest] Quests: " .. table.concat(names, ", "))
+			elseif sub == "accept" and rest ~= "" then
+				local ok2, reason = Server.QuestService:AcceptQuest(p, rest)
+				print(string.format("[/quest accept %s] %s %s", rest, tostring(ok2), tostring(reason)))
+			elseif sub == "complete" and rest ~= "" then
+				local ok2, reason = Server.QuestService:CompleteQuest(p, rest)
+				print(string.format("[/quest complete %s] %s %s", rest, tostring(ok2), tostring(reason)))
+			elseif sub == "abandon" and rest ~= "" then
+				local ok2, reason = Server.QuestService:AbandonQuest(p, rest)
+				print(string.format("[/quest abandon %s] %s %s", rest, tostring(ok2), tostring(reason)))
+			else
+				print("[/quest] usage: /quest list | /quest accept <id> | /quest complete <id> | /quest abandon <id>")
+			end
+		end)
+	end)
+end
+
 print("[DevCommands] /tp registered (Studio-only). Usage: /tp <RegionName> | /tp")
