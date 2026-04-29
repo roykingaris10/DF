@@ -328,6 +328,9 @@ function QuestService:RegisterEvent(player, eventType, target, amount)
 	local profile = getProfile(player)
 	if not profile then return end
 
+	local eventTypeLower = string.lower(tostring(eventType or ""))
+	local targetLower = string.lower(tostring(target or ""))
+
 	local affectedScopes = {}
 
 	for questId, progress in pairs(profile.currentQuests) do
@@ -337,7 +340,8 @@ function QuestService:RegisterEvent(player, eventType, target, amount)
 			local stage = getStageData(quest, progress.Stage)
 			if stage then
 				for _, obj in ipairs(stage.Objectives) do
-					if obj.Type == eventType and obj.Target == target then
+					if string.lower(tostring(obj.Type or "")) == eventTypeLower
+						and string.lower(tostring(obj.Target or "")) == targetLower then
 						local needed = obj.Count or 1
 						local have = progress.Objectives[obj.Id] or 0
 						if have < needed then

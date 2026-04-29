@@ -158,8 +158,10 @@ return function(Client)
 
 		if count > 0 then
 			notiNum.Text = count > 99 and "99+" or tostring(count)
+			notiNum.Visible = true
 			notiRed.Visible = true
 		else
+			notiNum.Visible = false
 			notiRed.Visible = false
 		end
 	end
@@ -682,12 +684,103 @@ return function(Client)
 		})
 	end
 
+	local function softenStrokes(root)
+		for _, descendant in ipairs(root:GetDescendants()) do
+			if descendant:IsA("UIStroke") then
+				if descendant.Thickness > 1 then
+					descendant.Thickness = 1
+				end
+				descendant.Transparency = math.max(descendant.Transparency, 0.35)
+			end
+		end
+	end
+
+	local function findClearAllButton(root)
+		for _, descendant in ipairs(root:GetDescendants()) do
+			if descendant:IsA("GuiButton") then
+				local lower = string.lower(descendant.Name)
+				if lower:find("clear") then
+					return descendant
+				end
+			end
+		end
+		return nil
+	end
+
+	local function ensureCloseButton()
+		local existing = NotificationHolder:FindFirstChild("CloseBtn")
+		if existing and existing:IsA("GuiButton") then
+			return existing
+		end
+
+		local closeBtn = Instance.new("TextButton")
+		closeBtn.Name = "CloseBtn"
+		closeBtn.AnchorPoint = Vector2.new(1, 0)
+		closeBtn.Position = UDim2.new(1, -8, 0, 8)
+		closeBtn.Size = UDim2.fromOffset(28, 28)
+		closeBtn.BackgroundTransparency = 0.4
+		closeBtn.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+		closeBtn.AutoButtonColor = true
+		closeBtn.Text = "X"
+		closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+		closeBtn.TextScaled = true
+		closeBtn.Font = Enum.Font.GothamBold
+		closeBtn.ZIndex = 10
+
+		local corner = Instance.new("UICorner")
+		corner.CornerRadius = UDim.new(0, 4)
+		corner.Parent = closeBtn
+
+		local padding = Instance.new("UIPadding")
+		padding.PaddingTop = UDim.new(0, 4)
+		padding.PaddingBottom = UDim.new(0, 4)
+		padding.PaddingLeft = UDim.new(0, 4)
+		padding.PaddingRight = UDim.new(0, 4)
+		padding.Parent = closeBtn
+
+		closeBtn.Parent = NotificationHolder
+		return closeBtn
+	end
+
 	function NotificationController:Init()
 		popupHolder.Visible = false
 		notiRed.Visible = false
+		notiNum.Visible = false
+
+		softenStrokes(NotificationHolder)
+		softenStrokes(popupHolder)
 
 		-- Initial empty state
 		updateEmptyState()
+
+		local clearAllBtn = findClearAllButton(NotificationHolder)
+		if clearAllBtn then
+			table.insert(connections, clearAllBtn.Activated:Connect(function()
+				playSound("click")
+				NotificationController:ClearAll()
+			end))
+		end
+
+		local closeBtn = ensureCloseButton()
+		closeBtn.Visible = NotificationHolder.Visible
+		table.insert(connections, closeBtn.Activated:Connect(function()
+			playSound("click")
+			NotificationHolder.Visible = false
+			closeBtn.Visible = false
+		end))
+		table.insert(connections, NotificationHolder:GetPropertyChangedSignal("Visible"):Connect(function()
+			closeBtn.Visible = NotificationHolder.Visible
+		end))
+
+		if notiBtn and (notiBtn:IsA("GuiButton")) then
+			table.insert(connections, notiBtn.Activated:Connect(function()
+				playSound("click")
+				NotificationHolder.Visible = not NotificationHolder.Visible
+				if NotificationHolder.Visible then
+					NotificationController:MarkAllAsRead()
+				end
+			end))
+		end
 
 		table.insert(connections, acceptBtn.Activated:Connect(handleAccept))
 		table.insert(connections, declineBtn.Activated:Connect(handleDecline))

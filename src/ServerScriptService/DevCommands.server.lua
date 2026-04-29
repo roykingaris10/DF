@@ -79,50 +79,72 @@ cmd.Triggered:Connect(function(textSource, message)
 	print("[/tp] " .. result)
 end)
 
-local OkFramework = game:GetService("ServerScriptService"):FindFirstChild("OkFramework")
-if OkFramework then
-	task.spawn(function()
-		local ok, Server = pcall(require, OkFramework)
-		if not ok or not Server then return end
+task.spawn(function()
+	local ServerScriptService = game:GetService("ServerScriptService")
+	local OkFramework = ServerScriptService:WaitForChild("OkFramework", 30)
+	if not OkFramework then
+		warn("[DevCommands] OkFramework not found within 30s; /quest disabled")
+		return
+	end
 
-		local questCmd = Instance.new("TextChatCommand")
-		questCmd.Name = "DevQuestCommand"
-		questCmd.PrimaryAlias = "/quest"
-		questCmd.Parent = TextChatService
+	local ok, Server = pcall(require, OkFramework)
+	if not ok or not Server then
+		warn("[DevCommands] failed to require OkFramework:", Server)
+		return
+	end
 
-		questCmd.Triggered:Connect(function(textSource, msg)
-			local p = Players:GetPlayerByUserId(textSource.UserId)
-			if not p then return end
-			local args = {}
-			for token in msg:gmatch("%S+") do table.insert(args, token) end
-			local sub = args[2]
-			if not sub then
-				print("[/quest] usage: list | accept <id> | complete <id> | abandon <id> | progress <type> <target> [amount]")
-				return
-			end
-			if sub == "list" then
-				local names = {}
-				for id in pairs(Server.QuestInfo or {}) do table.insert(names, id) end
-				table.sort(names)
-				print("[/quest] Quests: " .. table.concat(names, ", "))
-			elseif sub == "accept" and args[3] then
-				local ok2, reason = Server.QuestService:AcceptQuest(p, args[3])
-				print(string.format("[/quest accept %s] %s %s", args[3], tostring(ok2), tostring(reason)))
-			elseif sub == "complete" and args[3] then
-				local ok2, reason = Server.QuestService:CompleteQuest(p, args[3])
-				print(string.format("[/quest complete %s] %s %s", args[3], tostring(ok2), tostring(reason)))
-			elseif sub == "abandon" and args[3] then
-				local ok2, reason = Server.QuestService:AbandonQuest(p, args[3])
-				print(string.format("[/quest abandon %s] %s %s", args[3], tostring(ok2), tostring(reason)))
-			elseif sub == "progress" and args[3] and args[4] then
-				local amount = tonumber(args[5]) or 1
-				Server.QuestService:RegisterEvent(p, args[3], args[4], amount)
-				print(string.format("[/quest progress] fired %s/%s x%d", args[3], args[4], amount))
-			else
-				print("[/quest] usage: list | accept <id> | complete <id> | abandon <id> | progress <type> <target> [amount]")
-			end
-		end)
+	local USAGE = "[/quest] usage: list | accept <id> | complete <id> | abandon <id> | progress <type> <target> [amount] | kill <target> [amount] | collect <target> [amount] | reach <target> | talk <target>"
+
+	local function fireProgress(p, eventType, target, amount)
+		Server.QuestService:RegisterEvent(p, eventType, target, amount or 1)
+		print(string.format("[/quest %s] fired %s/%s x%d", string.lower(eventType), eventType, target, amount or 1))
+	end
+
+	local questCmd = Instance.new("TextChatCommand")
+	questCmd.Name = "DevQuestCommand"
+	questCmd.PrimaryAlias = "/quest"
+	questCmd.Parent = TextChatService
+
+	questCmd.Triggered:Connect(function(textSource, msg)
+		local p = Players:GetPlayerByUserId(textSource.UserId)
+		if not p then return end
+		local args = {}
+		for token in msg:gmatch("%S+") do table.insert(args, token) end
+		local sub = args[2] and string.lower(args[2]) or nil
+		if not sub then
+			print(USAGE)
+			return
+		end
+		if sub == "list" then
+			local names = {}
+			for id in pairs(Server.QuestInfo or {}) do table.insert(names, id) end
+			table.sort(names)
+			print("[/quest] Quests: " .. table.concat(names, ", "))
+		elseif sub == "accept" and args[3] then
+			local ok2, reason = Server.QuestService:AcceptQuest(p, args[3])
+			print(string.format("[/quest accept %s] %s %s", args[3], tostring(ok2), tostring(reason)))
+		elseif sub == "complete" and args[3] then
+			local ok2, reason = Server.QuestService:CompleteQuest(p, args[3])
+			print(string.format("[/quest complete %s] %s %s", args[3], tostring(ok2), tostring(reason)))
+		elseif sub == "abandon" and args[3] then
+			local ok2, reason = Server.QuestService:AbandonQuest(p, args[3])
+			print(string.format("[/quest abandon %s] %s %s", args[3], tostring(ok2), tostring(reason)))
+		elseif sub == "progress" and args[3] and args[4] then
+			fireProgress(p, args[3], args[4], tonumber(args[5]))
+		elseif sub == "kill" and args[3] then
+			fireProgress(p, "Kill", args[3], tonumber(args[4]))
+		elseif sub == "collect" and args[3] then
+			fireProgress(p, "Collect", args[3], tonumber(args[4]))
+		elseif sub == "reach" and args[3] then
+			fireProgress(p, "Reach", args[3], tonumber(args[4]))
+		elseif sub == "talk" and args[3] then
+			fireProgress(p, "Talk", args[3], tonumber(args[4]))
+		else
+			print(USAGE)
+		end
 	end)
-end
+
+	print("[DevCommands] /quest registered")
+end)
 
 print("[DevCommands] /tp registered (Studio-only). Usage: /tp <RegionName> | /tp")
