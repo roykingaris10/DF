@@ -399,6 +399,7 @@ return function(Client)
 			local success, dialogueInfo, shopInfo = Network:get('Dialogue', NPC)
 
 			if not success then
+				warn(("[DialogueHandler] %s: %s"):format(NPC.Name, tostring(dialogueInfo)))
 				DialogueHandler.inDialogue = false
 				return
 			end

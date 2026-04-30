@@ -91,6 +91,9 @@ function DialogueService.GetDialogue(player, NPC)
 			local repeatable = questInfo and questInfo.Repeatable
 
 			if table.find(profile.questsCompleted, questName) and not repeatable then
+				if hasDefault(questDialogue.Completed) then
+					return true, questDialogue.Completed
+				end
 				continue
 			end
 
