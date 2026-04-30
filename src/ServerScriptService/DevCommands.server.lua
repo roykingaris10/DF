@@ -93,7 +93,7 @@ task.spawn(function()
 		return
 	end
 
-	local USAGE = "[/quest] usage: list | accept <id> | complete <id> | abandon <id> | progress <type> <target> [amount] | kill <target> [amount] | collect <target> [amount] | reach <target> | talk <target>"
+	local USAGE = "[/quest] usage: list | accept <id> | complete <id> | abandon <id> | clear | progress <type> <target> [amount] | kill <target> [amount] | collect <target> [amount] | reach <target> | talk <target>"
 
 	local function fireProgress(p, eventType, target, amount)
 		Server.QuestService:RegisterEvent(p, eventType, target, amount or 1)
@@ -129,6 +129,9 @@ task.spawn(function()
 		elseif sub == "abandon" and args[3] then
 			local ok2, reason = Server.QuestService:AbandonQuest(p, args[3])
 			print(string.format("[/quest abandon %s] %s %s", args[3], tostring(ok2), tostring(reason)))
+		elseif sub == "clear" or sub == "reset" or sub == "wipe" then
+			local ok2, reason = Server.QuestService:ResetQuests(p)
+			print(string.format("[/quest clear] %s %s", tostring(ok2), tostring(reason)))
 		elseif sub == "progress" and args[3] and args[4] then
 			fireProgress(p, args[3], args[4], tonumber(args[5]))
 		elseif sub == "kill" and args[3] then

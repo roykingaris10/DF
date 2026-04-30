@@ -387,6 +387,21 @@ function QuestService:RegisterEvent(player, eventType, target, amount)
 	end
 end
 
+function QuestService:ResetQuests(player)
+	local profile = getProfile(player)
+	if not profile then return false, "no profile" end
+
+	for questId in pairs(profile.currentQuests) do
+		broadcast(player, { Kind = "Abandoned", QuestId = questId })
+	end
+
+	profile.currentQuests = {}
+	profile.questsCompleted = {}
+
+	QuestService:SyncToClient(player)
+	return true, "reset"
+end
+
 function QuestService:GetActiveQuests(player)
 	local profile = getProfile(player)
 	if not profile then return {} end

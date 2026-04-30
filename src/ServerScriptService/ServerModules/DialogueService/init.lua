@@ -144,17 +144,16 @@ function DialogueService.GetDialogue(player, NPC)
 		end
 	end
 
-	if DialogueService.ShopDialogues[NPC.Name] and Server.ShopInfo[NPC.Name] then
-		local shopData = Server.ShopInfo[NPC.Name]
+	if DialogueService.ShopDialogues[NPC.Name] then
+		local shopData = (Server.ShopInfo and Server.ShopInfo[NPC.Name]) or nil
 		return true, DialogueService.ShopDialogues[NPC.Name], shopData
 	end
 
 	if DialogueService.NPCDialogues[NPC.Name] then
-		local shopData = nil
-		if Server.ShopInfo[NPC.Name] then
-			shopData = Server.ShopInfo[NPC.Name]
-		end
-		return true, DialogueService.NPCDialogues[NPC.Name][1], shopData  -- Back to [1]
+		local shopData = (Server.ShopInfo and Server.ShopInfo[NPC.Name]) or nil
+		local entry = DialogueService.NPCDialogues[NPC.Name]
+		local node = (type(entry) == "table" and entry[1] and type(entry[1]) == "table" and entry[1].Default) and entry[1] or entry
+		return true, node, shopData
 	end
 
 	return false, "No dialogue found"
