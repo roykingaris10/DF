@@ -86,6 +86,10 @@ function DialogueService.GetDialogue(player, NPC)
 	end
 
 	if DialogueService.QuestDialogues[NPC.Name] then
+		local function hasDefault(node)
+			return type(node) == "table" and type(node.Default) == "table"
+		end
+
 		for _, questDialogue in ipairs(DialogueService.QuestDialogues[NPC.Name]) do
 			local questName = questDialogue.Name
 			local questInfo = Server.QuestInfo and Server.QuestInfo[questName]
@@ -97,28 +101,34 @@ function DialogueService.GetDialogue(player, NPC)
 
 			local current = profile.currentQuests[questName]
 			if current ~= nil then
+				local stateTable
 				if type(current) == "table" and questInfo then
 					local lastStageIdx = questInfo.Stages and #questInfo.Stages or 1
 					if current.Stage > lastStageIdx then
-						return true, questDialogue.Completed
+						stateTable = questDialogue.Completed
 					else
-						return true, questDialogue.InProgress
+						stateTable = questDialogue.InProgress
 					end
 				elseif type(current) == "number" and questInfo then
 					if questInfo.Requirement == current then
 						table.insert(profile.questsCompleted, questName)
-						return true, questDialogue.Completed
+						stateTable = questDialogue.Completed
 					else
-						return true, questDialogue.InProgress
+						stateTable = questDialogue.InProgress
 					end
 				elseif type(current) == "boolean" then
 					if current then
 						table.insert(profile.questsCompleted, questName)
-						return true, questDialogue.Completed
+						stateTable = questDialogue.Completed
 					else
-						return true, questDialogue.InProgress
+						stateTable = questDialogue.InProgress
 					end
 				end
+
+				if hasDefault(stateTable) then
+					return true, stateTable
+				end
+				continue
 			end
 
 			if Server.QuestService and Server.QuestService.CanAccept then
@@ -128,7 +138,9 @@ function DialogueService.GetDialogue(player, NPC)
 				end
 			end
 
-			return true, questDialogue.Initial
+			if hasDefault(questDialogue.Initial) then
+				return true, questDialogue.Initial
+			end
 		end
 	end
 

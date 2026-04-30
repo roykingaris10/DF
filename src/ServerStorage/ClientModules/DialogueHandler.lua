@@ -403,6 +403,12 @@ return function(Client)
 				return
 			end
 
+			if type(dialogueInfo) ~= "table" or not dialogueInfo.Default then
+				warn(("[DialogueHandler] %s returned no usable dialogue (no Default node)"):format(NPC.Name))
+				DialogueHandler.inDialogue = false
+				return
+			end
+
 			local dialogueVersion = 'Default'
 			local dialogueCurrent = 1
 			local dialogueLength = 1
