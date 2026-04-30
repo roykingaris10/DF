@@ -329,6 +329,39 @@ return function(Client)
 		return false
 	end
 
+	local function runNodeActions(node, NPC)
+		if not node then return end
+
+		if node.AcceptedQuest then
+			Network:get('DialogueAction', 'AcceptQuest', { questName = node.AcceptedQuest })
+		end
+		if node.TurnInQuest then
+			Network:get('DialogueAction', 'TurnInQuest', { questName = node.TurnInQuest })
+		end
+		if node.AbandonQuest then
+			Network:get('DialogueAction', 'AbandonQuest', { questName = node.AbandonQuest })
+		end
+
+		if node.Action then
+			local action = node.Action
+			if action == "Marine" or action == "Pirate" or action == "Revolutionary" or action == "Civilian" then
+				handleFactionAction(action)
+			elseif action == "CrewCreator" then
+				local currentFaction = FactionController.GetState().FactionId
+				if currentFaction ~= "Pirate" then
+					warn("[DialogueHandler] Only Pirates can create crews")
+				elseif player:GetAttribute("Crew") and player:GetAttribute("Crew") ~= "None" then
+					warn("[DialogueHandler] Already in a crew")
+				else
+					Network:get('DialogueAction', 'CrewCreator', {})
+					if Client.CrewClient then
+						Client.CrewClient:Setup()
+					end
+				end
+			end
+		end
+	end
+
 	local function setupNPCDialogue(NPC)
 		local hrp = NPC:WaitForChild('HumanoidRootPart')
 		local prompt = hrp:WaitForChild('NPCPrompt')
@@ -386,6 +419,8 @@ return function(Client)
 
 				local currentDialogue = dialogueInfo[dialogueVersion]
 				if not currentDialogue then break end
+
+				runNodeActions(currentDialogue, NPC)
 
 				for lineNum, lineText in ipairs(currentDialogue.Text) do
 					dialogueBox.Textbox.npcText.TextTransparency = 1
@@ -447,31 +482,6 @@ return function(Client)
 
 					local nextDialogue = dialogueInfo[dialogueVersion]
 					if not nextDialogue then break end
-
-					if nextDialogue.AcceptedQuest then
-						Network:get('DialogueAction', 'AcceptQuest', {questName = nextDialogue.AcceptedQuest})
-					end
-
-					if nextDialogue.Action then
-						local action = nextDialogue.Action
-
-						if action == "Marine" or action == "Pirate" or action == "Revolutionary" or action == "Civilian" then
-							handleFactionAction(action)
-
-						elseif action == "CrewCreator" then
-							local currentFaction = FactionController.GetState().FactionId
-							if currentFaction ~= "Pirate" then
-								warn("[DialogueHandler] Only Pirates can create crews")
-							elseif player:GetAttribute("Crew") and player:GetAttribute("Crew") ~= "None" then
-								warn("[DialogueHandler] Already in a crew")
-							else
-								Network:get('DialogueAction', 'CrewCreator', {})
-								if Client.CrewClient then
-									Client.CrewClient:Setup()
-								end
-							end
-						end
-					end
 
 					if nextDialogue.ShopInventory then
 						if Client.ShopHandler and shopInfo then

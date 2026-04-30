@@ -12,11 +12,34 @@ DialogueService.QuestDialogues = {}
 DialogueService.ShopDialogues = {}
 DialogueService.SkillDialogues = {}
 
+local function loadDictionaries()
+	local function safeRequire(child)
+		if not child or not child:IsA("ModuleScript") then return nil end
+		local ok, dict = pcall(require, child)
+		if not ok or type(dict) ~= "table" then return nil end
+		return dict
+	end
+
+	local function merge(target, dict)
+		if not dict then return end
+		for npcName, value in pairs(dict) do
+			if target[npcName] == nil then
+				target[npcName] = value
+			end
+		end
+	end
+
+	merge(DialogueService.NPCDialogues, safeRequire(script:FindFirstChild("DialogueDictionary")))
+	merge(DialogueService.QuestDialogues, safeRequire(script:FindFirstChild("QuestDialogueDictionary")))
+	merge(DialogueService.ShopDialogues, safeRequire(script:FindFirstChild("ShopDialogueDictionary")))
+	merge(DialogueService.SkillDialogues, safeRequire(script:FindFirstChild("SkillDialogueDictionary")))
+end
+
 local function initializeNPC(NPC)
 	if not NPC then return end
 
 	for _, part in pairs(NPC:GetDescendants()) do
-		if part:IsA('BasePart') then 
+		if part:IsA('BasePart') then
 			part.CollisionGroup = "Characters"
 		end
 	end
@@ -58,17 +81,17 @@ function DialogueService.GetDialogue(player, NPC)
 	end
 
 	if DialogueService.QuestDialogues[NPC.Name] then
-		for _, questDialogue in pairs(DialogueService.QuestDialogues[NPC.Name]) do
+		for _, questDialogue in ipairs(DialogueService.QuestDialogues[NPC.Name]) do
 			local questName = questDialogue.Name
+			local questInfo = Server.QuestInfo and Server.QuestInfo[questName]
+			local repeatable = questInfo and questInfo.Repeatable
 
-			if table.find(profile.questsCompleted, questName) then
+			if table.find(profile.questsCompleted, questName) and not repeatable then
 				continue
 			end
 
 			local current = profile.currentQuests[questName]
 			if current ~= nil then
-				local questInfo = Server.QuestInfo and Server.QuestInfo[questName]
-
 				if type(current) == "table" and questInfo then
 					local lastStageIdx = questInfo.Stages and #questInfo.Stages or 1
 					if current.Stage > lastStageIdx then
@@ -90,6 +113,13 @@ function DialogueService.GetDialogue(player, NPC)
 					else
 						return true, questDialogue.InProgress
 					end
+				end
+			end
+
+			if Server.QuestService and Server.QuestService.CanAccept then
+				local canAccept = Server.QuestService:CanAccept(player, questName)
+				if not canAccept then
+					continue
 				end
 			end
 
@@ -172,6 +202,8 @@ function DialogueService.ProcessAction(player, action, data)
 end
 
 local function initializeAllNPCs()
+	loadDictionaries()
+
 	local npcFolder = workspace:WaitForChild("NPCDialogue")
 	for _, npc in pairs(npcFolder:GetChildren()) do
 		initializeNPC(npc)
