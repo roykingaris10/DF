@@ -44,15 +44,20 @@ local function initializeNPC(NPC)
 		end
 	end
 
-	if NPC:FindFirstChild('Dialogue') then
-		DialogueService.NPCDialogues[NPC.Name] = require(NPC.Dialogue)
-	elseif NPC:FindFirstChild('QuestDialogue') then
-		DialogueService.QuestDialogues[NPC.Name] = require(NPC.QuestDialogue)
-	elseif NPC:FindFirstChild('ShopDialogue') then
-		DialogueService.ShopDialogues[NPC.Name] = require(NPC.ShopDialogue)
-	elseif NPC:FindFirstChild('SkillDialogue') then
-		DialogueService.SkillDialogues[NPC.Name] = require(NPC.SkillDialogue)
+	local function loadInto(target, childName)
+		local child = NPC:FindFirstChild(childName)
+		if child and child:IsA("ModuleScript") then
+			local ok, dialogue = pcall(require, child)
+			if ok and dialogue then
+				target[NPC.Name] = dialogue
+			end
+		end
 	end
+
+	loadInto(DialogueService.NPCDialogues, "Dialogue")
+	loadInto(DialogueService.QuestDialogues, "QuestDialogue")
+	loadInto(DialogueService.ShopDialogues, "ShopDialogue")
+	loadInto(DialogueService.SkillDialogues, "SkillDialogue")
 end
 
 function DialogueService.GetDialogue(player, NPC)
