@@ -44,15 +44,16 @@ return function(Client)
 
 		hint = Instance.new("TextLabel")
 		hint.Name = "ClickToContinueHint"
-		hint.AnchorPoint = Vector2.new(0.5, 0.5)
-		hint.Position = UDim2.fromScale(0.5, 0.5)
-		hint.Size = UDim2.fromScale(0.7, 0.55)
+		hint.AnchorPoint = Vector2.new(0.5, 1)
+		hint.Position = UDim2.new(0.5, 0, 1, -4)
+		hint.Size = UDim2.fromScale(0.5, 0.22)
 		hint.BackgroundTransparency = 1
 		hint.Font = Enum.Font.GothamMedium
+		hint.RichText = true
 		hint.TextScaled = true
 		hint.TextColor3 = Color3.fromRGB(245, 245, 245)
-		hint.TextTransparency = 0.1
-		hint.Text = "click to continue ▶"
+		hint.TextTransparency = 0.45
+		hint.Text = "<i>click to continue</i>"
 		hint.ZIndex = 5
 		hint.Visible = false
 		hint.Parent = choiceHolder
@@ -503,7 +504,7 @@ return function(Client)
 					dialogueUI.ChoiceHolder.Visible = true
 					continueHint.Visible = true
 					continueHint.TextTransparency = 1
-					TweenService:Create(continueHint, TweenInfo.new(0.4), { TextTransparency = 0.1 }):Play()
+					TweenService:Create(continueHint, TweenInfo.new(0.4), { TextTransparency = 0.45 }):Play()
 
 					repeat
 						task.wait()
@@ -518,6 +519,7 @@ return function(Client)
 				end
 
 				resetChoices(dialogueUI.ChoiceHolder)
+				continueHint.Visible = false
 
 				if currentDialogue.Choices then
 					local choiceConnections = {}
