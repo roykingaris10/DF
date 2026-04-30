@@ -501,10 +501,13 @@ return function(Client)
 
 					task.wait(0.2)
 
-					dialogueUI.ChoiceHolder.Visible = true
-					continueHint.Visible = true
-					continueHint.TextTransparency = 1
-					TweenService:Create(continueHint, TweenInfo.new(0.4), { TextTransparency = 0.45 }):Play()
+					local showHint = currentDialogue.Choices == nil
+					if showHint then
+						dialogueUI.ChoiceHolder.Visible = true
+						continueHint.Visible = true
+						continueHint.TextTransparency = 1
+						TweenService:Create(continueHint, TweenInfo.new(0.4), { TextTransparency = 0.45 }):Play()
+					end
 
 					repeat
 						task.wait()
