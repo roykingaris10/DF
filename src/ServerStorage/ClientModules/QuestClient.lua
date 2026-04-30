@@ -27,9 +27,9 @@ return function(Client)
 		return info and info[id]
 	end
 
-	local function notifyQuest(message, isComplete)
+	local function notifyQuest(message, isComplete, questId)
 		if Client.NotificationController and Client.NotificationController.AddQuestUpdate then
-			Client.NotificationController:AddQuestUpdate("Quest", message, isComplete or false)
+			Client.NotificationController:AddQuestUpdate("Quest", message, isComplete or false, questId)
 		end
 	end
 
@@ -541,15 +541,15 @@ return function(Client)
 		elseif kind == "Accepted" then
 			activeQuests[payload.QuestId] = payload.Progress
 			local quest = questDef(payload.QuestId)
-			notifyQuest("New quest: " .. ((quest and quest.Name) or payload.QuestId))
+			notifyQuest("New quest: " .. ((quest and quest.Name) or payload.QuestId), false, payload.QuestId)
 			if not trackedId or not activeQuests[trackedId] then trackedId = payload.QuestId end
 		elseif kind == "Progress" then
 			activeQuests[payload.QuestId] = payload.Progress
 			local quest = questDef(payload.QuestId)
 			if payload.Complete then
-				notifyQuest((quest and quest.Name or payload.QuestId) .. " — ready to turn in", false)
+				notifyQuest((quest and quest.Name or payload.QuestId) .. " — ready to turn in", false, payload.QuestId)
 			else
-				notifyQuest((quest and quest.Name or payload.QuestId) .. ": " .. objectiveSummary(quest, payload.Progress))
+				notifyQuest((quest and quest.Name or payload.QuestId) .. ": " .. objectiveSummary(quest, payload.Progress), false, payload.QuestId)
 			end
 		elseif kind == "Completed" then
 			activeQuests[payload.QuestId] = nil
@@ -559,20 +559,20 @@ return function(Client)
 					table.insert(completedQuests, payload.QuestId)
 				end
 			end
-			notifyQuest("Completed: " .. ((quest and quest.Name) or payload.QuestId), true)
+			notifyQuest("Completed: " .. ((quest and quest.Name) or payload.QuestId), true, payload.QuestId)
 			if trackedId == payload.QuestId then trackedId = nil end
 			if selectedId == payload.QuestId then selectedId = nil end
 		elseif kind == "Abandoned" then
 			activeQuests[payload.QuestId] = nil
 			local quest = questDef(payload.QuestId)
-			notifyQuest("Abandoned: " .. ((quest and quest.Name) or payload.QuestId))
+			notifyQuest("Abandoned: " .. ((quest and quest.Name) or payload.QuestId), false, payload.QuestId)
 			if trackedId == payload.QuestId then trackedId = nil end
 			if selectedId == payload.QuestId then selectedId = nil end
 		elseif kind == "Failed" then
 			activeQuests[payload.QuestId] = nil
 			local quest = questDef(payload.QuestId)
 			local reason = payload.Reason == "time" and "ran out of time" or (payload.Reason or "failed")
-			notifyQuest("Failed: " .. ((quest and quest.Name) or payload.QuestId) .. " (" .. reason .. ")", true)
+			notifyQuest("Failed: " .. ((quest and quest.Name) or payload.QuestId) .. " (" .. reason .. ")", true, payload.QuestId)
 			if trackedId == payload.QuestId then trackedId = nil end
 			if selectedId == payload.QuestId then selectedId = nil end
 		end

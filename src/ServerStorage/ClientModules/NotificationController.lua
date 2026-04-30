@@ -33,17 +33,21 @@ return function(Client)
 	local acceptDecline = popUpFrame:WaitForChild("acceptDecline")
 	local acceptBtn = acceptDecline:WaitForChild("acceptBtn")
 	local declineBtn = acceptDecline:WaitForChild("declineBtn")
+	local popupCloseBtn = popUpFrame:FindFirstChild("close")
 
 	local NotificationHolder = topHolder:WaitForChild("NotificationHolder")
 	local notiScroll = NotificationHolder:WaitForChild("notiScroll")
+	local categoriesHolder = NotificationHolder:FindFirstChild("categoriesHolder")
+	local categoriesContainer = categoriesHolder and categoriesHolder:FindFirstChild("categories")
+	local clearContainer = categoriesHolder and categoriesHolder:FindFirstChild("clear")
 
 	local toastLabel = UI:FindFirstChild("rejectPrompt")
 
 	-- Template from ReplicatedStorage
 	local notiTemplate = Kits.UI:WaitForChild("notiHolder")
 
-	-- Empty state text - find or create
-	local NoneText = NotificationHolder:FindFirstChild("NoneText")
+	-- Empty state text - find anywhere under NotificationHolder
+	local NoneText = NotificationHolder:FindFirstChild("NoneText", true)
 
 	local Sounds = {
 		notification = Instance.new("Sound"),
@@ -103,6 +107,7 @@ return function(Client)
 	local notificationOrder = {}
 	local notificationFrames = {}
 	local frameConnections = {}
+	local notifByKey = {}
 	local currentFilter = "All"
 	local currentPopupNotificationId = nil
 	local connections = {}
@@ -133,10 +138,22 @@ return function(Client)
 		return count
 	end
 
+	local clearTextLabels = {}
+
+	local function updateClearLabel()
+		local count = getNotificationCount()
+		for _, label in ipairs(clearTextLabels) do
+			if label and label.Parent then
+				label.Text = string.format("CLEAR ALL (%d)", count)
+			end
+		end
+	end
+
 	local function updateEmptyState()
 		local hasNotifications = getNotificationCount() > 0
-		NoneText.Visible = not hasNotifications
+		if NoneText then NoneText.Visible = not hasNotifications end
 		notiScroll.Visible = hasNotifications
+		updateClearLabel()
 	end
 
 	local function showToast(message, isSuccess)
@@ -318,15 +335,10 @@ return function(Client)
 
 		if notiInfo then
 			local typeLabel = notiInfo:FindFirstChild("type")
-			local eyeIcon = notiInfo:FindFirstChild("eyeicon")
 
 			if typeLabel and (typeLabel:IsA("TextLabel") or typeLabel:IsA("TextButton")) then
 				typeLabel.Text = notif.category:upper()
 				typeLabel.TextColor3 = CATEGORIES[notif.category].color
-			end
-
-			if eyeIcon then
-				eyeIcon.Visible = not notif.read
 			end
 		end
 
@@ -456,6 +468,51 @@ return function(Client)
 	-- PUBLIC API
 	-- ═══════════════════════════════════════════════════════════
 
+	local function applyOptionsToNotif(notif, category, title, options)
+		notif.category = category
+		notif.title = title
+		notif.message = options.message or notif.message or ""
+		notif.icon = options.icon or notif.icon
+		notif.actionable = options.actionable or false
+		notif.acceptText = options.acceptText
+		notif.declineText = options.declineText
+		notif.data = options.data or notif.data or {}
+		notif.onAccept = options.onAccept
+		notif.onDecline = options.onDecline
+	end
+
+	local function refreshFrameForNotif(notif)
+		local frame = notificationFrames[notif.id]
+		if not frame then return end
+		local notiName = frame:FindFirstChild("notiName")
+		if notiName and (notiName:IsA("TextLabel") or notiName:IsA("TextButton")) then
+			notiName.Text = notif.title:upper()
+		end
+		local notiInfo = frame:FindFirstChild("notiInfo")
+		if notiInfo then
+			local typeLabel = notiInfo:FindFirstChild("type")
+			if typeLabel and (typeLabel:IsA("TextLabel") or typeLabel:IsA("TextButton")) then
+				typeLabel.Text = notif.category:upper()
+				typeLabel.TextColor3 = CATEGORIES[notif.category].color
+			end
+		end
+	end
+
+	local function refreshOpenPopupIfMatches(notif)
+		if not isPopupShowingNotification(notif.id) then return end
+		popupTitle.Text = notif.title:upper()
+		popupType.Text = notif.category:upper()
+		popupType.TextColor3 = CATEGORIES[notif.category].color
+		if popupInputText then
+			popupInputText.Text = notif.message or ""
+		end
+		if popupImage then
+			local icon = notif.icon or CATEGORIES[notif.category].icon
+			popupImage.Image = icon
+			popupImage.ImageColor3 = CATEGORIES[notif.category].color
+		end
+	end
+
 	function NotificationController:AddNotification(category, title, options)
 		options = options or {}
 
@@ -464,9 +521,25 @@ return function(Client)
 			category = "World"
 		end
 
+		if options.key then
+			local existingId = notifByKey[options.key]
+			if existingId and notifications[existingId] then
+				local notif = notifications[existingId]
+				applyOptionsToNotif(notif, category, title, options)
+				notif.read = false
+				notif.timestamp = os.time()
+				refreshFrameForNotif(notif)
+				refreshOpenPopupIfMatches(notif)
+				updateBadge()
+				pulseRedBadge()
+				return existingId
+			end
+		end
+
 		local id = generateId()
 		local notif = {
 			id = id,
+			key = options.key,
 			category = category,
 			title = title,
 			message = options.message or "",
@@ -482,6 +555,7 @@ return function(Client)
 		}
 
 		notifications[id] = notif
+		if options.key then notifByKey[options.key] = id end
 		table.insert(notificationOrder, 1, id)
 
 		if currentFilter == "All" or currentFilter == category then
@@ -508,10 +582,15 @@ return function(Client)
 	end
 
 	function NotificationController:RemoveNotification(id)
-		if not notifications[id] then return end
+		local notif = notifications[id]
+		if not notif then return end
 
 		if isPopupShowingNotification(id) then
 			hidePopup()
+		end
+
+		if notif.key and notifByKey[notif.key] == id then
+			notifByKey[notif.key] = nil
 		end
 
 		notifications[id] = nil
@@ -533,15 +612,6 @@ return function(Client)
 		if not notif then return end
 
 		notif.read = true
-
-		local frame = notificationFrames[id]
-		if frame then
-			local eyeIcon = frame:FindFirstChild("eyeicon", true)
-			if eyeIcon then
-				eyeIcon.Visible = false
-			end
-		end
-
 		updateBadge()
 	end
 
@@ -560,6 +630,7 @@ return function(Client)
 		end
 		notifications = {}
 		notificationOrder = {}
+		notifByKey = {}
 		updateBadge()
 		updateEmptyState()
 	end
@@ -648,11 +719,12 @@ return function(Client)
 		})
 	end
 
-	function NotificationController:AddQuestUpdate(questName, message, isComplete)
+	function NotificationController:AddQuestUpdate(questName, message, isComplete, questId)
 		local title = isComplete and "Quest Complete!" or "Quest Update"
 		return self:AddNotification("Progress", title, {
 			message = questName .. ": " .. message,
 			actionable = false,
+			key = questId and ("quest:" .. tostring(questId)) or nil,
 		})
 	end
 
@@ -742,6 +814,66 @@ return function(Client)
 		return closeBtn
 	end
 
+	local function wireClickable(instance, handler)
+		if instance:IsA("GuiButton") then
+			table.insert(connections, instance.Activated:Connect(handler))
+		else
+			table.insert(connections, instance.InputBegan:Connect(function(input)
+				if input.UserInputType == Enum.UserInputType.MouseButton1
+					or input.UserInputType == Enum.UserInputType.Touch then
+					handler()
+				end
+			end))
+		end
+	end
+
+	local function wireClearContainer(container)
+		if not container then return end
+
+		for _, descendant in ipairs(container:GetDescendants()) do
+			if descendant:IsA("TextLabel") or descendant:IsA("TextButton") then
+				table.insert(clearTextLabels, descendant)
+			end
+		end
+		if container:IsA("TextLabel") or container:IsA("TextButton") then
+			table.insert(clearTextLabels, container)
+		end
+		updateClearLabel()
+
+		wireClickable(container, function()
+			playSound("click")
+			NotificationController:ClearAll()
+		end)
+	end
+
+	local function wireCategoryFilters(categoriesParent)
+		if not categoriesParent then return end
+
+		local function applyFilter(name)
+			currentFilter = name
+			refreshNotificationList()
+		end
+
+		for _, child in ipairs(categoriesParent:GetChildren()) do
+			if child:IsA("GuiObject") then
+				local lower = string.lower(child.Name)
+				local matched = nil
+				if lower:find("combat") then matched = "Combat"
+				elseif lower:find("progress") or lower:find("quest") then matched = "Progress"
+				elseif lower:find("social") then matched = "Social"
+				elseif lower:find("world") then matched = "World"
+				elseif lower:find("all") then matched = "All"
+				end
+				if matched then
+					wireClickable(child, function()
+						playSound("click")
+						applyFilter(matched)
+					end)
+				end
+			end
+		end
+	end
+
 	function NotificationController:Init()
 		popupHolder.Visible = false
 		notiRed.Visible = false
@@ -750,15 +882,16 @@ return function(Client)
 		softenStrokes(NotificationHolder)
 		softenStrokes(popupHolder)
 
-		-- Initial empty state
 		updateEmptyState()
 
-		local clearAllBtn = findClearAllButton(NotificationHolder)
-		if clearAllBtn then
-			table.insert(connections, clearAllBtn.Activated:Connect(function()
+		wireClearContainer(clearContainer)
+		wireCategoryFilters(categoriesContainer)
+
+		if popupCloseBtn then
+			wireClickable(popupCloseBtn, function()
 				playSound("click")
-				NotificationController:ClearAll()
-			end))
+				hidePopup()
+			end)
 		end
 
 		local closeBtn = ensureCloseButton()
