@@ -4,6 +4,7 @@ return function(Client)
 	local TweenService = game:GetService('TweenService')
 	local ReplicatedStorage = game:GetService("ReplicatedStorage")
 	local RunService = game:GetService("RunService")
+	local SoundService = game:GetService("SoundService")
 
 	local Kits = ReplicatedStorage.Kits
 	local Nodes = Kits.Nodes
@@ -18,6 +19,44 @@ return function(Client)
 		lastStateChange = 0,
 		debounceTime = 0.15
 	}
+
+	local ITALIC_COLOR = "#FFDC78"
+	local function applyMarkup(text)
+		if type(text) ~= "string" then return text end
+		return (text:gsub("%*([^%*]+)%*", string.format('<i><font color="%s">%%1</font></i>', ITALIC_COLOR)))
+	end
+
+	local lineSound = Instance.new("Sound")
+	lineSound.SoundId = "rbxassetid://9114393683"
+	lineSound.Volume = 0.35
+	lineSound.PlaybackSpeed = 1
+	lineSound.Parent = SoundService
+
+	local function playLineSound()
+		lineSound.PlaybackSpeed = 0.95 + math.random() * 0.1
+		lineSound:Stop()
+		lineSound:Play()
+	end
+
+	local function ensureContinueHint(choiceHolder)
+		local hint = choiceHolder:FindFirstChild("ClickToContinueHint")
+		if hint then return hint end
+
+		hint = Instance.new("TextLabel")
+		hint.Name = "ClickToContinueHint"
+		hint.AnchorPoint = Vector2.new(0.5, 0.5)
+		hint.Position = UDim2.fromScale(0.5, 0.5)
+		hint.Size = UDim2.fromScale(0.6, 0.4)
+		hint.BackgroundTransparency = 1
+		hint.Font = Enum.Font.GothamMedium
+		hint.TextScaled = true
+		hint.TextColor3 = Color3.fromRGB(220, 220, 220)
+		hint.TextTransparency = 0.25
+		hint.Text = "click to continue ▶"
+		hint.Visible = false
+		hint.Parent = choiceHolder
+		return hint
+	end
 
 	local FactionController = require(Nodes.Gameplay.FactionController)(Client)
 
@@ -429,6 +468,13 @@ return function(Client)
 			dialogueBox.NPCName.Text = (`~ {NPC.Name} ~`)
 			dialogueBox.Textbox.npcText.Text = ""
 
+			local continueHint = ensureContinueHint(dialogueUI.ChoiceHolder)
+			continueHint.Visible = false
+
+			local npcText = dialogueBox.Textbox.npcText
+			npcText.RichText = true
+			local baseTextPos = npcText.Position
+
 			showDialogue(UI, dialogueUI)
 
 			repeat
@@ -442,9 +488,14 @@ return function(Client)
 
 				for lineNum, lineText in ipairs(currentDialogue.Text) do
 					DialogueHandler.mouseClicked = false
-					dialogueBox.Textbox.npcText.TextTransparency = 1
-					dialogueBox.Textbox.npcText.Text = lineText
-					TweenService:Create(dialogueBox.Textbox.npcText, TweenInfo.new(0.5), {TextTransparency = 0}):Play()
+					npcText.TextTransparency = 1
+					npcText.Position = baseTextPos + UDim2.fromOffset(0, 6)
+					npcText.Text = applyMarkup(lineText)
+					playLineSound()
+					TweenService:Create(npcText, TweenInfo.new(0.45, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
+						TextTransparency = 0,
+						Position = baseTextPos,
+					}):Play()
 
 					if lineNum == #currentDialogue.Text and currentDialogue.Choices then
 						task.wait(0.3)
@@ -453,9 +504,15 @@ return function(Client)
 
 					task.wait(0.2)
 
+					continueHint.Visible = true
+					continueHint.TextTransparency = 1
+					TweenService:Create(continueHint, TweenInfo.new(0.4), { TextTransparency = 0.25 }):Play()
+
 					repeat
 						task.wait()
 					until DialogueHandler.mouseClicked or isPlayerTooFar(hrp, maxDistance)
+
+					continueHint.Visible = false
 
 					if not DialogueHandler.mouseClicked then
 						hideDialogue(UI, dialogueUI)
