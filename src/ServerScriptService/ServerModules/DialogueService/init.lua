@@ -44,20 +44,15 @@ local function initializeNPC(NPC)
 		end
 	end
 
-	local function loadInto(target, childName)
-		local child = NPC:FindFirstChild(childName)
-		if child and child:IsA("ModuleScript") then
-			local ok, dialogue = pcall(require, child)
-			if ok and dialogue then
-				target[NPC.Name] = dialogue
-			end
-		end
+	if NPC:FindFirstChild('Dialogue') then
+		DialogueService.NPCDialogues[NPC.Name] = require(NPC.Dialogue)
+	elseif NPC:FindFirstChild('QuestDialogue') then
+		DialogueService.QuestDialogues[NPC.Name] = require(NPC.QuestDialogue)
+	elseif NPC:FindFirstChild('ShopDialogue') then
+		DialogueService.ShopDialogues[NPC.Name] = require(NPC.ShopDialogue)
+	elseif NPC:FindFirstChild('SkillDialogue') then
+		DialogueService.SkillDialogues[NPC.Name] = require(NPC.SkillDialogue)
 	end
-
-	loadInto(DialogueService.NPCDialogues, "Dialogue")
-	loadInto(DialogueService.QuestDialogues, "QuestDialogue")
-	loadInto(DialogueService.ShopDialogues, "ShopDialogue")
-	loadInto(DialogueService.SkillDialogues, "SkillDialogue")
 end
 
 function DialogueService.GetDialogue(player, NPC)
@@ -144,16 +139,15 @@ function DialogueService.GetDialogue(player, NPC)
 		end
 	end
 
-	if DialogueService.ShopDialogues[NPC.Name] then
-		local shopData = (Server.ShopInfo and Server.ShopInfo[NPC.Name]) or nil
+	if DialogueService.ShopDialogues[NPC.Name] and Server.ShopInfo and Server.ShopInfo[NPC.Name] then
+		local shopData = Server.ShopInfo[NPC.Name]
 		return true, DialogueService.ShopDialogues[NPC.Name], shopData
 	end
 
 	if DialogueService.NPCDialogues[NPC.Name] then
-		local shopData = (Server.ShopInfo and Server.ShopInfo[NPC.Name]) or nil
 		local entry = DialogueService.NPCDialogues[NPC.Name]
 		local node = (type(entry) == "table" and entry[1] and type(entry[1]) == "table" and entry[1].Default) and entry[1] or entry
-		return true, node, shopData
+		return true, node
 	end
 
 	return false, "No dialogue found"
