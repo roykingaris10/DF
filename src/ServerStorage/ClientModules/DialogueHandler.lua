@@ -255,7 +255,23 @@ return function(Client)
 		end
 	end
 
+	local function ensureChoiceLayout(choiceHolder)
+		local layout = choiceHolder:FindFirstChildOfClass("UIListLayout")
+		if not layout then
+			layout = Instance.new("UIListLayout")
+			layout.SortOrder = Enum.SortOrder.LayoutOrder
+			layout.FillDirection = Enum.FillDirection.Vertical
+			layout.HorizontalAlignment = Enum.HorizontalAlignment.Right
+			layout.VerticalAlignment = Enum.VerticalAlignment.Center
+			layout.Padding = UDim.new(0, 4)
+			layout.Parent = choiceHolder
+		end
+		return layout
+	end
+
 	local function createChoiceButton(choiceHolder, choiceNum, choiceText)
+		ensureChoiceLayout(choiceHolder)
+
 		local button = Instance.new('TextButton')
 		button.Name = "Choice" .. choiceNum
 		button.FontFace = Font.new("rbxasset://fonts/families/AccanthisADFStd.json")
@@ -264,17 +280,27 @@ return function(Client)
 		button.TextColor3 = Color3.fromRGB(255, 255, 255)
 		button.TextSize = 14
 		button.TextScaled = true
-		button.AnchorPoint = Vector2.new(0.95, 0.5)
 		button.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 		button.BackgroundTransparency = 1
-		button.Position = UDim2.fromScale(0.635, 0.5)
-		button.Size = UDim2.fromScale(0.4, 0.7)
+		button.Size = UDim2.fromScale(0.4, 0.18)
+		button.LayoutOrder = choiceNum
 		button.ZIndex = 4
 		button.Parent = choiceHolder
 
 		TweenService:Create(button, TweenInfo.new(0.5), {TextTransparency = 0.2}):Play()
 
 		return button
+	end
+
+	local function evalCondition(condition)
+		if condition == nil then return true end
+		if type(condition) == "function" then
+			local ok, result = pcall(condition, player, Client)
+			if not ok then return false end
+			return result and true or false
+		end
+		if type(condition) == "boolean" then return condition end
+		return true
 	end
 
 	local function isPlayerTooFar(npcHRP, maxDistance)
@@ -430,17 +456,18 @@ return function(Client)
 				runNodeActions(currentDialogue, NPC)
 
 				for lineNum, lineText in ipairs(currentDialogue.Text) do
+					DialogueHandler.mouseClicked = false
 					dialogueBox.Textbox.npcText.TextTransparency = 1
 					dialogueBox.Textbox.npcText.Text = lineText
 					TweenService:Create(dialogueBox.Textbox.npcText, TweenInfo.new(0.5), {TextTransparency = 0}):Play()
 
-					task.wait(0.5)
-
 					if lineNum == #currentDialogue.Text and currentDialogue.Choices then
+						task.wait(0.3)
 						break
 					end
 
-					DialogueHandler.mouseClicked = false
+					task.wait(0.2)
+
 					repeat
 						task.wait()
 					until DialogueHandler.mouseClicked or isPlayerTooFar(hrp, maxDistance)
@@ -457,15 +484,29 @@ return function(Client)
 					local choiceConnections = {}
 					local choiceSelected = nil
 
+					local filteredChoices = {}
 					for i, choiceText in ipairs(currentDialogue.Choices) do
-						local button = createChoiceButton(dialogueUI.ChoiceHolder, i, choiceText)
+						local condition = currentDialogue.ChoiceConditions and currentDialogue.ChoiceConditions[i]
+						if evalCondition(condition) then
+							table.insert(filteredChoices, { index = i, text = choiceText })
+						end
+					end
 
-						choiceConnections[i] = button.MouseButton1Click:Connect(function()
-							for _, conn in ipairs(choiceConnections) do
-								conn:Disconnect()
+					if #filteredChoices == 0 then
+						hideDialogue(UI, dialogueUI)
+						return
+					end
+
+					for _, entry in ipairs(filteredChoices) do
+						local button = createChoiceButton(dialogueUI.ChoiceHolder, entry.index, entry.text)
+
+						local conn = button.MouseButton1Click:Connect(function()
+							for _, c in ipairs(choiceConnections) do
+								c:Disconnect()
 							end
-							choiceSelected = i
+							choiceSelected = entry.index
 						end)
+						table.insert(choiceConnections, conn)
 					end
 
 					dialogueUI.ChoiceHolder.Visible = true
