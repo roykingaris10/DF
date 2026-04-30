@@ -255,23 +255,7 @@ return function(Client)
 		end
 	end
 
-	local function ensureChoiceLayout(choiceHolder)
-		local layout = choiceHolder:FindFirstChildOfClass("UIListLayout")
-		if not layout then
-			layout = Instance.new("UIListLayout")
-			layout.SortOrder = Enum.SortOrder.LayoutOrder
-			layout.FillDirection = Enum.FillDirection.Vertical
-			layout.HorizontalAlignment = Enum.HorizontalAlignment.Right
-			layout.VerticalAlignment = Enum.VerticalAlignment.Center
-			layout.Padding = UDim.new(0, 4)
-			layout.Parent = choiceHolder
-		end
-		return layout
-	end
-
 	local function createChoiceButton(choiceHolder, choiceNum, choiceText)
-		ensureChoiceLayout(choiceHolder)
-
 		local button = Instance.new('TextButton')
 		button.Name = "Choice" .. choiceNum
 		button.FontFace = Font.new("rbxasset://fonts/families/AccanthisADFStd.json")
@@ -280,10 +264,11 @@ return function(Client)
 		button.TextColor3 = Color3.fromRGB(255, 255, 255)
 		button.TextSize = 14
 		button.TextScaled = true
+		button.AnchorPoint = Vector2.new(0.95, 0.5)
 		button.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 		button.BackgroundTransparency = 1
-		button.Size = UDim2.fromScale(0.4, 0.18)
-		button.LayoutOrder = choiceNum
+		button.Position = UDim2.fromScale(0.635, 0.5)
+		button.Size = UDim2.fromScale(0.4, 0.7)
 		button.ZIndex = 4
 		button.Parent = choiceHolder
 
@@ -571,7 +556,9 @@ return function(Client)
 		DialogueHandler:Setup()
 
 		game:GetService('UserInputService').InputBegan:Connect(function(input, gameProcessed)
-			if input.UserInputType == Enum.UserInputType.MouseButton1 and not gameProcessed then
+			if not DialogueHandler.inDialogue then return end
+			if input.UserInputType == Enum.UserInputType.MouseButton1
+				or input.UserInputType == Enum.UserInputType.Touch then
 				DialogueHandler.mouseClicked = true
 			end
 		end)
