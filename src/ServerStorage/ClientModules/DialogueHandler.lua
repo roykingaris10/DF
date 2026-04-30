@@ -20,7 +20,7 @@ return function(Client)
 		debounceTime = 0.15
 	}
 
-	local ITALIC_COLOR = "#FFDC78"
+	local ITALIC_COLOR = "#D4B8FF"
 	local function applyMarkup(text)
 		if type(text) ~= "string" then return text end
 		return (text:gsub("%*([^%*]+)%*", string.format('<i><font color="%s">%%1</font></i>', ITALIC_COLOR)))
@@ -46,13 +46,14 @@ return function(Client)
 		hint.Name = "ClickToContinueHint"
 		hint.AnchorPoint = Vector2.new(0.5, 0.5)
 		hint.Position = UDim2.fromScale(0.5, 0.5)
-		hint.Size = UDim2.fromScale(0.6, 0.4)
+		hint.Size = UDim2.fromScale(0.7, 0.55)
 		hint.BackgroundTransparency = 1
 		hint.Font = Enum.Font.GothamMedium
 		hint.TextScaled = true
-		hint.TextColor3 = Color3.fromRGB(220, 220, 220)
-		hint.TextTransparency = 0.25
+		hint.TextColor3 = Color3.fromRGB(245, 245, 245)
+		hint.TextTransparency = 0.1
 		hint.Text = "click to continue ▶"
+		hint.ZIndex = 5
 		hint.Visible = false
 		hint.Parent = choiceHolder
 		return hint
@@ -473,7 +474,6 @@ return function(Client)
 
 			local npcText = dialogueBox.Textbox.npcText
 			npcText.RichText = true
-			local baseTextPos = npcText.Position
 
 			showDialogue(UI, dialogueUI)
 
@@ -489,13 +489,9 @@ return function(Client)
 				for lineNum, lineText in ipairs(currentDialogue.Text) do
 					DialogueHandler.mouseClicked = false
 					npcText.TextTransparency = 1
-					npcText.Position = baseTextPos + UDim2.fromOffset(0, 6)
 					npcText.Text = applyMarkup(lineText)
 					playLineSound()
-					TweenService:Create(npcText, TweenInfo.new(0.45, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
-						TextTransparency = 0,
-						Position = baseTextPos,
-					}):Play()
+					TweenService:Create(npcText, TweenInfo.new(0.5), { TextTransparency = 0 }):Play()
 
 					if lineNum == #currentDialogue.Text and currentDialogue.Choices then
 						task.wait(0.3)
@@ -504,9 +500,10 @@ return function(Client)
 
 					task.wait(0.2)
 
+					dialogueUI.ChoiceHolder.Visible = true
 					continueHint.Visible = true
 					continueHint.TextTransparency = 1
-					TweenService:Create(continueHint, TweenInfo.new(0.4), { TextTransparency = 0.25 }):Play()
+					TweenService:Create(continueHint, TweenInfo.new(0.4), { TextTransparency = 0.1 }):Play()
 
 					repeat
 						task.wait()
