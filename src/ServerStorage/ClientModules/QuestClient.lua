@@ -566,8 +566,12 @@ return function(Client)
 				end
 			end
 			notifyQuest("Completed: " .. ((quest and quest.Name) or payload.QuestId), true, payload.QuestId)
-			completeSound:Stop()
-			completeSound:Play()
+			if Client.QuestCompleteController and Client.QuestCompleteController.Show then
+				Client.QuestCompleteController:Show((quest and quest.Name) or payload.QuestId)
+			else
+				completeSound:Stop()
+				completeSound:Play()
+			end
 			if trackedId == payload.QuestId then trackedId = nil end
 			if selectedId == payload.QuestId then selectedId = nil end
 		elseif kind == "Abandoned" then
@@ -605,6 +609,10 @@ return function(Client)
 
 		ensureLog(playerGui)
 		ensureTracker(playerGui)
+
+		if Client.QuestCompleteController and Client.QuestCompleteController.SetSound then
+			Client.QuestCompleteController:SetSound(completeSound)
+		end
 
 		if Network and Network.bindEvent then
 			Network:bindEvent("QuestUpdate", function(payload)

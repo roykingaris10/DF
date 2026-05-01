@@ -38,25 +38,25 @@ return function(Client)
 		lineSound:Play()
 	end
 
-	local function ensureContinueHint(choiceHolder)
-		local hint = choiceHolder:FindFirstChild("ClickToContinueHint")
+	local function ensureContinueHint(dialogueUI)
+		local hint = dialogueUI:FindFirstChild("ClickToContinueHint")
 		if hint then return hint end
 
 		hint = Instance.new("TextLabel")
 		hint.Name = "ClickToContinueHint"
 		hint.AnchorPoint = Vector2.new(0.5, 1)
-		hint.Position = UDim2.new(0.5, 0, 1, -4)
-		hint.Size = UDim2.fromScale(0.5, 0.22)
+		hint.Position = UDim2.new(0.5, 0, 1, -8)
+		hint.Size = UDim2.fromScale(0.4, 0.06)
 		hint.BackgroundTransparency = 1
 		hint.Font = Enum.Font.GothamMedium
 		hint.RichText = true
 		hint.TextScaled = true
 		hint.TextColor3 = Color3.fromRGB(245, 245, 245)
-		hint.TextTransparency = 0.45
+		hint.TextTransparency = 0.4
 		hint.Text = "<i>click to continue</i>"
-		hint.ZIndex = 5
+		hint.ZIndex = 20
 		hint.Visible = false
-		hint.Parent = choiceHolder
+		hint.Parent = dialogueUI
 		return hint
 	end
 
@@ -470,7 +470,7 @@ return function(Client)
 			dialogueBox.NPCName.Text = (`~ {NPC.Name} ~`)
 			dialogueBox.Textbox.npcText.Text = ""
 
-			local continueHint = ensureContinueHint(dialogueUI.ChoiceHolder)
+			local continueHint = ensureContinueHint(dialogueUI)
 			continueHint.Visible = false
 
 			local npcText = dialogueBox.Textbox.npcText
@@ -503,10 +503,9 @@ return function(Client)
 
 					local showHint = currentDialogue.Choices == nil
 					if showHint then
-						dialogueUI.ChoiceHolder.Visible = true
 						continueHint.Visible = true
 						continueHint.TextTransparency = 1
-						TweenService:Create(continueHint, TweenInfo.new(0.4), { TextTransparency = 0.45 }):Play()
+						TweenService:Create(continueHint, TweenInfo.new(0.4), { TextTransparency = 0.4 }):Play()
 					end
 
 					repeat
