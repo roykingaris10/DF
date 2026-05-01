@@ -5,12 +5,18 @@ return function(Client)
 
 	local UserInputService = game:GetService("UserInputService")
 	local ReplicatedStorage = game:GetService("ReplicatedStorage")
+	local SoundService = game:GetService("SoundService")
 
 	local activeQuests = {}
 	local completedQuests = {}
 	local trackedId = nil
 	local selectedId = nil
 	local refs = {}
+
+	local completeSound = Instance.new("Sound")
+	completeSound.SoundId = "rbxassetid://118754898939434"
+	completeSound.Volume = 0.6
+	completeSound.Parent = SoundService
 
 	local function getQuestInfo()
 		if Client.QuestInfo then return Client.QuestInfo end
@@ -560,6 +566,8 @@ return function(Client)
 				end
 			end
 			notifyQuest("Completed: " .. ((quest and quest.Name) or payload.QuestId), true, payload.QuestId)
+			completeSound:Stop()
+			completeSound:Play()
 			if trackedId == payload.QuestId then trackedId = nil end
 			if selectedId == payload.QuestId then selectedId = nil end
 		elseif kind == "Abandoned" then
