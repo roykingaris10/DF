@@ -11,7 +11,7 @@ return function(Client)
 	local CORNER_BOT_SIZE = UDim2.fromOffset(195, 11)
 	local CORNER_TOP_COLLAPSED = UDim2.fromOffset(29, 19)
 	local CORNER_BOT_COLLAPSED = UDim2.fromOffset(28, 11)
-	local HOLD_DURATION = 3.5
+	local HOLD_DURATION = 5.5
 
 	local refs = nil
 	local activeToken = 0
@@ -49,6 +49,8 @@ return function(Client)
 			questState = frame:FindFirstChild("questState"),
 		}
 		refs.captionText = refs.rect and refs.rect:FindFirstChild("captionText") or nil
+		refs.questNameStroke = refs.questName and refs.questName:FindFirstChildOfClass("UIStroke") or nil
+		refs.questStateStroke = refs.questState and refs.questState:FindFirstChildOfClass("UIStroke") or nil
 
 		return refs
 	end
@@ -71,6 +73,8 @@ return function(Client)
 		if r.questState and r.questState:IsA("TextLabel") then r.questState.TextTransparency = 1 end
 		if r.questName and r.questName:IsA("TextLabel") then r.questName.TextTransparency = 1 end
 		if r.captionText and r.captionText:IsA("TextLabel") then r.captionText.TextTransparency = 1 end
+		if r.questNameStroke then r.questNameStroke.Transparency = 1 end
+		if r.questStateStroke then r.questStateStroke.Transparency = 1 end
 	end
 
 	local function openTween(r)
@@ -104,8 +108,14 @@ return function(Client)
 			if r.questState and r.questState:IsA("TextLabel") then
 				play(r.questState, ease(0.8, Enum.EasingStyle.Sine), { TextTransparency = 0 })
 			end
+			if r.questStateStroke then
+				play(r.questStateStroke, ease(0.8, Enum.EasingStyle.Sine), { Transparency = 0 })
+			end
 			if r.questName and r.questName:IsA("TextLabel") then
 				play(r.questName, ease(0.9, Enum.EasingStyle.Sine, Enum.EasingDirection.Out, 0.15), { TextTransparency = 0 })
+			end
+			if r.questNameStroke then
+				play(r.questNameStroke, ease(0.9, Enum.EasingStyle.Sine, Enum.EasingDirection.Out, 0.15), { Transparency = 0 })
 			end
 		end)
 
@@ -126,8 +136,14 @@ return function(Client)
 		if r.questState and r.questState:IsA("TextLabel") then
 			play(r.questState, ease(0.4, Enum.EasingStyle.Linear), { TextTransparency = 1 })
 		end
+		if r.questStateStroke then
+			play(r.questStateStroke, ease(0.4, Enum.EasingStyle.Linear), { Transparency = 1 })
+		end
 		if r.questName and r.questName:IsA("TextLabel") then
 			play(r.questName, ease(0.4, Enum.EasingStyle.Linear), { TextTransparency = 1 })
+		end
+		if r.questNameStroke then
+			play(r.questNameStroke, ease(0.4, Enum.EasingStyle.Linear), { Transparency = 1 })
 		end
 		if r.topPart then
 			play(r.topPart, ease(0.5, Enum.EasingStyle.Sine, Enum.EasingDirection.Out, 0.1), { ImageTransparency = 1 })

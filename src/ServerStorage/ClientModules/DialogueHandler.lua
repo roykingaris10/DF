@@ -45,14 +45,14 @@ return function(Client)
 		hint = Instance.new("TextLabel")
 		hint.Name = "ClickToContinueHint"
 		hint.AnchorPoint = Vector2.new(0.5, 1)
-		hint.Position = UDim2.new(0.5, 0, 1, -8)
-		hint.Size = UDim2.fromScale(0.4, 0.06)
+		hint.Position = UDim2.new(0.5, 0, 0.92, 0)
+		hint.Size = UDim2.fromScale(0.18, 0.035)
 		hint.BackgroundTransparency = 1
-		hint.Font = Enum.Font.GothamMedium
+		hint.Font = Enum.Font.Gotham
 		hint.RichText = true
 		hint.TextScaled = true
 		hint.TextColor3 = Color3.fromRGB(245, 245, 245)
-		hint.TextTransparency = 0.4
+		hint.TextTransparency = 0.45
 		hint.Text = "<i>click to continue</i>"
 		hint.ZIndex = 20
 		hint.Visible = false
@@ -501,12 +501,9 @@ return function(Client)
 
 					task.wait(0.2)
 
-					local showHint = currentDialogue.Choices == nil
-					if showHint then
-						continueHint.Visible = true
-						continueHint.TextTransparency = 1
-						TweenService:Create(continueHint, TweenInfo.new(0.4), { TextTransparency = 0.4 }):Play()
-					end
+					continueHint.Visible = true
+					continueHint.TextTransparency = 1
+					TweenService:Create(continueHint, TweenInfo.new(0.4), { TextTransparency = 0.45 }):Play()
 
 					repeat
 						task.wait()
