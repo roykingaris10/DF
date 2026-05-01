@@ -85,7 +85,9 @@ function DialogueService.GetDialogue(player, NPC)
 			return type(node) == "table" and type(node.Default) == "table"
 		end
 
-		for _, questDialogue in ipairs(DialogueService.QuestDialogues[NPC.Name]) do
+		local list = DialogueService.QuestDialogues[NPC.Name]
+
+		for _, questDialogue in ipairs(list) do
 			local questName = questDialogue.Name
 			local questInfo = Server.QuestInfo and Server.QuestInfo[questName]
 			local repeatable = questInfo and questInfo.Repeatable
@@ -139,6 +141,10 @@ function DialogueService.GetDialogue(player, NPC)
 			if hasDefault(questDialogue.Initial) then
 				return true, questDialogue.Initial
 			end
+		end
+
+		if hasDefault(list.Fallback) then
+			return true, list.Fallback
 		end
 	end
 

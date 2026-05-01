@@ -343,6 +343,15 @@ local QuestDialogueDictionary = {
 	},
 
 	BountyBoard = {
+		Fallback = {
+			Default = {
+				Text = {
+					"*The board is plastered with names you don't recognise.*",
+					"Nothing here for someone like you yet. Make a name for yourself first.",
+				},
+			},
+		},
+
 		[1] = {
 			Name = "WantedBounty",
 			Initial = {
