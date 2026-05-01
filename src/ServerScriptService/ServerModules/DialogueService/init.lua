@@ -146,6 +146,12 @@ function DialogueService.GetDialogue(player, NPC)
 		if hasDefault(list.Fallback) then
 			return true, list.Fallback
 		end
+
+		return true, {
+			Default = {
+				Text = { "..." },
+			},
+		}
 	end
 
 	if DialogueService.ShopDialogues[NPC.Name] and Server.ShopInfo and Server.ShopInfo[NPC.Name] then
