@@ -567,7 +567,10 @@ return function(Client)
 			end
 			notifyQuest("Completed: " .. ((quest and quest.Name) or payload.QuestId), true, payload.QuestId)
 			if Client.QuestCompleteController and Client.QuestCompleteController.Show then
-				Client.QuestCompleteController:Show((quest and quest.Name) or payload.QuestId)
+				Client.QuestCompleteController:Show(
+					(quest and quest.Name) or payload.QuestId,
+					quest and quest.Caption or ""
+				)
 			else
 				completeSound:Stop()
 				completeSound:Play()

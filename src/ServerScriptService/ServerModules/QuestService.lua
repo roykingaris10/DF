@@ -192,11 +192,29 @@ local function grantReward(player, profile, reward)
 			if track then track.Exp = (track.Exp or 0) + (reward.Amount or 0) end
 		end
 	elseif rType == "Beli" then
-		profile.UserData.Beli = (profile.UserData.Beli or 0) + (reward.Amount or 0)
+		local oldBeli = profile.UserData.Beli or 0
+		local amount = reward.Amount or 0
+		profile.UserData.Beli = oldBeli + amount
 		player:SetAttribute("Beli", profile.UserData.Beli)
+		if player:FindFirstChild("StatFolder") then
+			local userFolder = player.StatFolder:FindFirstChild("UserFolder")
+			if userFolder then
+				userFolder:SetAttribute("Beli", profile.UserData.Beli)
+			end
+		end
+		if Network and Network.post then
+			Network:post("BeliUpdate", player, oldBeli, profile.UserData.Beli, -amount)
+		end
 	elseif rType == "Bounty" then
-		profile.UserData.Bounty = (profile.UserData.Bounty or 0) + (reward.Amount or 0)
+		local oldBounty = profile.UserData.Bounty or 0
+		profile.UserData.Bounty = oldBounty + (reward.Amount or 0)
 		player:SetAttribute("Bounty", profile.UserData.Bounty)
+		if player:FindFirstChild("StatFolder") then
+			local userFolder = player.StatFolder:FindFirstChild("UserFolder")
+			if userFolder then
+				userFolder:SetAttribute("Bounty", profile.UserData.Bounty)
+			end
+		end
 	elseif rType == "Item" then
 		local entity = getEntity(player)
 		local im = entity and entity.InventoryManager

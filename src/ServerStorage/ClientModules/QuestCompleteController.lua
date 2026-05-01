@@ -45,10 +45,10 @@ return function(Client)
 			bottomRight = frame:FindFirstChild("bottomRight"),
 			bottomPart = frame:FindFirstChild("bottomPart"),
 			rect = frame:FindFirstChild("rect"),
-			captionText = frame:FindFirstChild("captionText"),
-			questText = frame:FindFirstChild("questText"),
+			questName = frame:FindFirstChild("questName"),
+			questState = frame:FindFirstChild("questState"),
 		}
-		refs.rectLabel = refs.rect and refs.rect:FindFirstChildWhichIsA("TextLabel") or nil
+		refs.captionText = refs.rect and refs.rect:FindFirstChild("captionText") or nil
 
 		return refs
 	end
@@ -68,9 +68,9 @@ return function(Client)
 		if r.bottomLeft then r.bottomLeft.Size = CORNER_BOT_COLLAPSED end
 		if r.bottomRight then r.bottomRight.Size = CORNER_BOT_COLLAPSED end
 
+		if r.questState and r.questState:IsA("TextLabel") then r.questState.TextTransparency = 1 end
+		if r.questName and r.questName:IsA("TextLabel") then r.questName.TextTransparency = 1 end
 		if r.captionText and r.captionText:IsA("TextLabel") then r.captionText.TextTransparency = 1 end
-		if r.questText and r.questText:IsA("TextLabel") then r.questText.TextTransparency = 1 end
-		if r.rectLabel then r.rectLabel.TextTransparency = 1 end
 	end
 
 	local function openTween(r)
@@ -101,11 +101,11 @@ return function(Client)
 			if r.bottomPart then
 				play(r.bottomPart, ease(0.9, Enum.EasingStyle.Sine, Enum.EasingDirection.Out, 0.1), { ImageTransparency = 0 })
 			end
-			if r.captionText and r.captionText:IsA("TextLabel") then
-				play(r.captionText, ease(0.8, Enum.EasingStyle.Sine), { TextTransparency = 0 })
+			if r.questState and r.questState:IsA("TextLabel") then
+				play(r.questState, ease(0.8, Enum.EasingStyle.Sine), { TextTransparency = 0 })
 			end
-			if r.questText and r.questText:IsA("TextLabel") then
-				play(r.questText, ease(0.9, Enum.EasingStyle.Sine, Enum.EasingDirection.Out, 0.15), { TextTransparency = 0 })
+			if r.questName and r.questName:IsA("TextLabel") then
+				play(r.questName, ease(0.9, Enum.EasingStyle.Sine, Enum.EasingDirection.Out, 0.15), { TextTransparency = 0 })
 			end
 		end)
 
@@ -113,9 +113,9 @@ return function(Client)
 			if r.rect then
 				local final = TweenService:Create(r.rect, ease(0.5, Enum.EasingStyle.Sine), { ImageTransparency = 0 })
 				final:Play()
-				if r.rectLabel then
+				if r.captionText and r.captionText:IsA("TextLabel") then
 					final.Completed:Connect(function()
-						play(r.rectLabel, ease(0.4, Enum.EasingStyle.Sine), { TextTransparency = 0 })
+						play(r.captionText, ease(0.4, Enum.EasingStyle.Sine), { TextTransparency = 0 })
 					end)
 				end
 			end
@@ -123,11 +123,11 @@ return function(Client)
 	end
 
 	local function closeTween(r)
-		if r.captionText and r.captionText:IsA("TextLabel") then
-			play(r.captionText, ease(0.4, Enum.EasingStyle.Linear), { TextTransparency = 1 })
+		if r.questState and r.questState:IsA("TextLabel") then
+			play(r.questState, ease(0.4, Enum.EasingStyle.Linear), { TextTransparency = 1 })
 		end
-		if r.questText and r.questText:IsA("TextLabel") then
-			play(r.questText, ease(0.4, Enum.EasingStyle.Linear), { TextTransparency = 1 })
+		if r.questName and r.questName:IsA("TextLabel") then
+			play(r.questName, ease(0.4, Enum.EasingStyle.Linear), { TextTransparency = 1 })
 		end
 		if r.topPart then
 			play(r.topPart, ease(0.5, Enum.EasingStyle.Sine, Enum.EasingDirection.Out, 0.1), { ImageTransparency = 1 })
@@ -138,8 +138,8 @@ return function(Client)
 		if r.rect then
 			play(r.rect, ease(0.4, Enum.EasingStyle.Sine), { ImageTransparency = 1 })
 		end
-		if r.rectLabel then
-			play(r.rectLabel, ease(0.4, Enum.EasingStyle.Sine), { TextTransparency = 1 })
+		if r.captionText and r.captionText:IsA("TextLabel") then
+			play(r.captionText, ease(0.4, Enum.EasingStyle.Sine), { TextTransparency = 1 })
 		end
 
 		task.delay(0.3, function()
@@ -162,7 +162,7 @@ return function(Client)
 		end)
 	end
 
-	function QuestCompleteController:Show(questName, captionOverride)
+	function QuestCompleteController:Show(questName, caption, stateText)
 		local r = findUI()
 		if not r then
 			warn("[QuestCompleteController] questComplete UI not found")
@@ -174,11 +174,14 @@ return function(Client)
 
 		setHidden(r)
 
-		if r.captionText and r.captionText:IsA("TextLabel") then
-			r.captionText.Text = (captionOverride or "QUEST COMPLETE"):upper()
+		if r.questState and r.questState:IsA("TextLabel") then
+			r.questState.Text = (stateText or "QUEST COMPLETE"):upper()
 		end
-		if r.questText and r.questText:IsA("TextLabel") then
-			r.questText.Text = tostring(questName or "")
+		if r.questName and r.questName:IsA("TextLabel") then
+			r.questName.Text = tostring(questName or "")
+		end
+		if r.captionText and r.captionText:IsA("TextLabel") then
+			r.captionText.Text = tostring(caption or "")
 		end
 
 		if completeSound then

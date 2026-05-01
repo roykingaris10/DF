@@ -779,41 +779,6 @@ return function(Client)
 		return nil
 	end
 
-	local function ensureCloseButton()
-		local existing = NotificationHolder:FindFirstChild("CloseBtn")
-		if existing and existing:IsA("GuiButton") then
-			return existing
-		end
-
-		local closeBtn = Instance.new("TextButton")
-		closeBtn.Name = "CloseBtn"
-		closeBtn.AnchorPoint = Vector2.new(1, 0)
-		closeBtn.Position = UDim2.new(1, -8, 0, 8)
-		closeBtn.Size = UDim2.fromOffset(28, 28)
-		closeBtn.BackgroundTransparency = 0.4
-		closeBtn.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-		closeBtn.AutoButtonColor = true
-		closeBtn.Text = "X"
-		closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-		closeBtn.TextScaled = true
-		closeBtn.Font = Enum.Font.GothamBold
-		closeBtn.ZIndex = 10
-
-		local corner = Instance.new("UICorner")
-		corner.CornerRadius = UDim.new(0, 4)
-		corner.Parent = closeBtn
-
-		local padding = Instance.new("UIPadding")
-		padding.PaddingTop = UDim.new(0, 4)
-		padding.PaddingBottom = UDim.new(0, 4)
-		padding.PaddingLeft = UDim.new(0, 4)
-		padding.PaddingRight = UDim.new(0, 4)
-		padding.Parent = closeBtn
-
-		closeBtn.Parent = NotificationHolder
-		return closeBtn
-	end
-
 	local function wireClickable(instance, handler)
 		if instance:IsA("GuiButton") then
 			table.insert(connections, instance.Activated:Connect(handler))
@@ -894,16 +859,8 @@ return function(Client)
 			end)
 		end
 
-		local closeBtn = ensureCloseButton()
-		closeBtn.Visible = NotificationHolder.Visible
-		table.insert(connections, closeBtn.Activated:Connect(function()
-			playSound("click")
-			NotificationHolder.Visible = false
-			closeBtn.Visible = false
-		end))
-		table.insert(connections, NotificationHolder:GetPropertyChangedSignal("Visible"):Connect(function()
-			closeBtn.Visible = NotificationHolder.Visible
-		end))
+		local strayCloseBtn = NotificationHolder:FindFirstChild("CloseBtn")
+		if strayCloseBtn then strayCloseBtn:Destroy() end
 
 		if notiBtn and (notiBtn:IsA("GuiButton")) then
 			table.insert(connections, notiBtn.Activated:Connect(function()
