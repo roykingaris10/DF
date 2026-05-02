@@ -9,16 +9,18 @@ return function(Client)
 	local SoundService = game:GetService("SoundService")
 
 	local CFG = {
-		MinHeight = 1.0,
-		MaxHeight = 4.5,
-		ForwardReach = 6.5,
+		MinHeight = 0.4,
+		MaxHeight = 6.0,
+		ForwardReach = 9.0,
+		OverheadReachExtra = 0.0,
+		OverheadClearance = 2.5,
 		ForwardImpulse = 40,
 		UpwardImpulse = 22,
 		VelocityDuration = 0.2,
 		AnimSpeed = 1.2,
-		Cooldown = 0.5,
+		Cooldown = 1.7,
 
-		ForwardInputThreshold = 0.2,
+		ForwardInputThreshold = -0.3,
 
 		FOVKickAmount = 4,
 		FOVKickIn = 0.12,
@@ -84,24 +86,41 @@ return function(Client)
 		return rp
 	end
 
+	local function castForward(rp, origin, look)
+		return workspace:Raycast(origin, look * CFG.ForwardReach, rp)
+	end
+
 	local function detectVaultable(character)
 		local hrp = character:FindFirstChild("HumanoidRootPart")
 		local head = character:FindFirstChild("Head")
 		if not hrp or not head then return nil end
 
 		local rp = buildRayParams(character)
-		local lowOrigin = hrp.Position - Vector3.new(0, 1, 0)
-		local frontRay = workspace:Raycast(lowOrigin, hrp.CFrame.LookVector * CFG.ForwardReach, rp)
-		if not frontRay then return nil end
+		local look = hrp.CFrame.LookVector
 
-		local part = frontRay.Instance
+		local result
+		for _, dy in ipairs({ -1, 0.5, 2 }) do
+			local origin = hrp.Position + Vector3.new(0, dy, 0)
+			local hit = castForward(rp, origin, look)
+			if hit then
+				result = hit
+				break
+			end
+		end
+
+		if not result then return nil end
+
+		local part = result.Instance
 		if part:GetAttribute("NoVault") then return nil end
 
-		local highOrigin = head.Position + Vector3.new(0, 1, 0)
-		local overheadRay = workspace:Raycast(highOrigin, head.CFrame.LookVector * (CFG.ForwardReach + 0.5), rp)
-		if overheadRay then return nil end
+		local topY = highestY(part)
+		local clearOrigin = result.Position + Vector3.new(0, CFG.OverheadClearance, 0)
+		local clearRay = workspace:Raycast(clearOrigin, look * (CFG.ForwardReach + CFG.OverheadReachExtra), rp)
+		if clearRay and (clearRay.Instance ~= part) then
+			return nil
+		end
 
-		local heightAboveCenter = highestY(part) - hrp.Position.Y
+		local heightAboveCenter = topY - hrp.Position.Y
 		if heightAboveCenter < (CFG.MinHeight - 3) or heightAboveCenter > (CFG.MaxHeight - 3) then
 			return nil
 		end
@@ -188,6 +207,7 @@ return function(Client)
 		if not hrp or not humanoid then return false end
 
 		active = true
+		startCooldown(Entity)
 		Entity:SetState("Vaulting", true)
 		character:SetAttribute("Vaulting", true)
 
@@ -231,7 +251,6 @@ return function(Client)
 				}, CFG.LandingBoostDuration)
 			end
 			active = false
-			startCooldown(Entity)
 			Entity:SetState("Vaulting", nil)
 			if character.Parent then
 				character:SetAttribute("Vaulting", false)
