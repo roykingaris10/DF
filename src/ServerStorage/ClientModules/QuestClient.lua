@@ -82,7 +82,8 @@ return function(Client)
 		frame.Name = "TrackerFrame"
 		frame.AnchorPoint = Vector2.new(1, 0.5)
 		frame.Position = UDim2.new(1, -16, 0.5, 0)
-		frame.Size = UDim2.new(0, 280, 0, 140)
+		frame.Size = UDim2.new(0, 300, 0, 0)
+		frame.AutomaticSize = Enum.AutomaticSize.Y
 		frame.BackgroundColor3 = Color3.fromRGB(20, 20, 24)
 		frame.BackgroundTransparency = 0.2
 		frame.BorderSizePixel = 0
@@ -94,35 +95,91 @@ return function(Client)
 		stroke.Thickness = 1
 		stroke.Parent = frame
 
+		local layout = Instance.new("UIListLayout")
+		layout.SortOrder = Enum.SortOrder.LayoutOrder
+		layout.Padding = UDim.new(0, 6)
+		layout.Parent = frame
+
+		local padding = Instance.new("UIPadding")
+		padding.PaddingTop = UDim.new(0, 8)
+		padding.PaddingBottom = UDim.new(0, 10)
+		padding.PaddingLeft = UDim.new(0, 10)
+		padding.PaddingRight = UDim.new(0, 10)
+		padding.Parent = frame
+
 		local title = Instance.new("TextLabel")
 		title.Name = "Title"
-		title.Size = UDim2.new(1, -16, 0, 22)
-		title.Position = UDim2.new(0, 8, 0, 6)
+		title.Size = UDim2.new(1, 0, 0, 22)
 		title.BackgroundTransparency = 1
 		title.Font = Enum.Font.GothamBold
 		title.TextSize = 14
 		title.TextColor3 = Color3.fromRGB(255, 220, 120)
 		title.TextXAlignment = Enum.TextXAlignment.Left
 		title.Text = ""
+		title.LayoutOrder = 1
 		title.Parent = frame
 
-		local body = Instance.new("TextLabel")
-		body.Name = "Body"
-		body.Size = UDim2.new(1, -16, 1, -32)
-		body.Position = UDim2.new(0, 8, 0, 28)
-		body.BackgroundTransparency = 1
-		body.Font = Enum.Font.Gotham
-		body.TextSize = 13
-		body.TextColor3 = Color3.fromRGB(220, 220, 220)
-		body.TextXAlignment = Enum.TextXAlignment.Left
-		body.TextYAlignment = Enum.TextYAlignment.Top
-		body.TextWrapped = true
-		body.Text = ""
-		body.Parent = frame
+		local objectivesBody = Instance.new("TextLabel")
+		objectivesBody.Name = "Objectives"
+		objectivesBody.Size = UDim2.new(1, 0, 0, 0)
+		objectivesBody.AutomaticSize = Enum.AutomaticSize.Y
+		objectivesBody.BackgroundTransparency = 1
+		objectivesBody.Font = Enum.Font.Gotham
+		objectivesBody.RichText = true
+		objectivesBody.TextSize = 13
+		objectivesBody.TextColor3 = Color3.fromRGB(220, 220, 220)
+		objectivesBody.TextXAlignment = Enum.TextXAlignment.Left
+		objectivesBody.TextYAlignment = Enum.TextYAlignment.Top
+		objectivesBody.TextWrapped = true
+		objectivesBody.Text = ""
+		objectivesBody.LayoutOrder = 2
+		objectivesBody.Parent = frame
+
+		local divider = Instance.new("Frame")
+		divider.Name = "Divider"
+		divider.Size = UDim2.new(1, 0, 0, 1)
+		divider.BackgroundColor3 = Color3.fromRGB(70, 70, 80)
+		divider.BackgroundTransparency = 0.4
+		divider.BorderSizePixel = 0
+		divider.LayoutOrder = 3
+		divider.Visible = false
+		divider.Parent = frame
+
+		local rewardsBody = Instance.new("TextLabel")
+		rewardsBody.Name = "Rewards"
+		rewardsBody.Size = UDim2.new(1, 0, 0, 0)
+		rewardsBody.AutomaticSize = Enum.AutomaticSize.Y
+		rewardsBody.BackgroundTransparency = 1
+		rewardsBody.Font = Enum.Font.Gotham
+		rewardsBody.RichText = true
+		rewardsBody.TextSize = 12
+		rewardsBody.TextColor3 = Color3.fromRGB(180, 180, 195)
+		rewardsBody.TextXAlignment = Enum.TextXAlignment.Left
+		rewardsBody.TextYAlignment = Enum.TextYAlignment.Top
+		rewardsBody.TextWrapped = true
+		rewardsBody.Text = ""
+		rewardsBody.LayoutOrder = 4
+		rewardsBody.Parent = frame
+
+		local timer = Instance.new("TextLabel")
+		timer.Name = "Timer"
+		timer.Size = UDim2.new(1, 0, 0, 16)
+		timer.BackgroundTransparency = 1
+		timer.Font = Enum.Font.GothamMedium
+		timer.TextSize = 12
+		timer.TextColor3 = Color3.fromRGB(255, 170, 90)
+		timer.TextXAlignment = Enum.TextXAlignment.Left
+		timer.Text = ""
+		timer.LayoutOrder = 5
+		timer.Visible = false
+		timer.Parent = frame
 
 		refs.tracker = screen
 		refs.trackerTitle = title
-		refs.trackerBody = body
+		refs.trackerObjectives = objectivesBody
+		refs.trackerDivider = divider
+		refs.trackerRewards = rewardsBody
+		refs.trackerTimer = timer
 		screen.Enabled = false
 	end
 
@@ -402,6 +459,66 @@ return function(Client)
 		return string.format("Time left: %ds", s)
 	end
 
+	local function buildTrackerObjectives(quest, progress)
+		local lines = {}
+		local stages = quest.Stages or { { Objectives = quest.Objectives } }
+		local currentStage = progress.Stage or 1
+		local readyToTurnIn = currentStage > #stages
+
+		for stageIdx, stage in ipairs(stages) do
+			local stageDone = stageIdx < currentStage or readyToTurnIn
+			local stageActive = stageIdx == currentStage and not readyToTurnIn
+
+			local stageTitle = stage.Title or ("Stage " .. stageIdx)
+			if stageDone then
+				table.insert(lines, string.format("<font color=\"#7FCC8F\"><s>✓ %s</s></font>", stageTitle))
+			elseif stageActive then
+				table.insert(lines, string.format("<font color=\"#FFDC78\"><b>▸ %s</b></font>", stageTitle))
+			else
+				table.insert(lines, string.format("<font color=\"#888899\">○ %s</font>", stageTitle))
+			end
+
+			if stage.Objectives then
+				for _, obj in ipairs(stage.Objectives) do
+					local need = obj.Count or 1
+					local have
+					if stageDone then
+						have = need
+					elseif stageActive then
+						have = (progress.Objectives and progress.Objectives[obj.Id]) or 0
+					else
+						have = 0
+					end
+					local desc = obj.Description or obj.Id or "?"
+					local objDone = have >= need
+					local line
+					if stageDone or objDone then
+						line = string.format("    <font color=\"#7FCC8F\"><s>%s (%d/%d)</s></font>", desc, have, need)
+					elseif stageActive then
+						line = string.format("    <font color=\"#E8E8E8\">%s (%d/%d)</font>", desc, have, need)
+					else
+						line = string.format("    <font color=\"#777788\">%s</font>", desc)
+					end
+					table.insert(lines, line)
+				end
+			end
+		end
+
+		if readyToTurnIn and quest.TurnInTo then
+			table.insert(lines, string.format("<font color=\"#FFDC78\"><b>▸ Turn in to %s</b></font>", quest.TurnInTo))
+		end
+
+		return table.concat(lines, "\n")
+	end
+
+	local function buildTrackerRewards(quest)
+		local lines = {}
+		for _, reward in ipairs(quest.Rewards or {}) do
+			table.insert(lines, "  +  " .. rewardLine(reward))
+		end
+		return table.concat(lines, "\n")
+	end
+
 	function QuestClient:RefreshTracker()
 		if not refs.tracker then return end
 
@@ -411,7 +528,10 @@ return function(Client)
 			trackedId = nil
 			refs.tracker.Enabled = false
 			refs.trackerTitle.Text = ""
-			refs.trackerBody.Text = ""
+			refs.trackerObjectives.Text = ""
+			refs.trackerRewards.Text = ""
+			refs.trackerDivider.Visible = false
+			refs.trackerTimer.Visible = false
 			return
 		end
 
@@ -427,14 +547,26 @@ return function(Client)
 			refs.tracker.Enabled = false
 			return
 		end
+
 		local quest = questDef(id)
 		if not quest then refs.tracker.Enabled = false return end
+
+		local progress = activeQuests[id]
 		refs.tracker.Enabled = true
 		refs.trackerTitle.Text = quest.Name or id
-		local body = objectiveSummary(quest, activeQuests[id])
-		local timeStr = timeRemainingText(activeQuests[id])
-		if timeStr then body = body .. "\n" .. timeStr end
-		refs.trackerBody.Text = body
+		refs.trackerObjectives.Text = buildTrackerObjectives(quest, progress)
+
+		local rewardsText = buildTrackerRewards(quest)
+		refs.trackerRewards.Text = rewardsText
+		refs.trackerDivider.Visible = rewardsText ~= ""
+
+		local timeStr = timeRemainingText(progress)
+		if timeStr then
+			refs.trackerTimer.Text = timeStr
+			refs.trackerTimer.Visible = true
+		else
+			refs.trackerTimer.Visible = false
+		end
 	end
 
 	function QuestClient:Refresh()
@@ -560,10 +692,8 @@ return function(Client)
 		elseif kind == "Completed" then
 			activeQuests[payload.QuestId] = nil
 			local quest = questDef(payload.QuestId)
-			if quest and not quest.Repeatable then
-				if not table.find(completedQuests, payload.QuestId) then
-					table.insert(completedQuests, payload.QuestId)
-				end
+			if not table.find(completedQuests, payload.QuestId) then
+				table.insert(completedQuests, payload.QuestId)
 			end
 			notifyQuest("Completed: " .. ((quest and quest.Name) or payload.QuestId), true, payload.QuestId)
 			if Client.QuestCompleteController and Client.QuestCompleteController.Show then

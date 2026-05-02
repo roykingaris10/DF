@@ -315,10 +315,8 @@ function QuestService:CompleteQuest(player, questId)
 	if not isFullyComplete(quest, progress) then return false, "not all objectives complete" end
 
 	profile.currentQuests[questId] = nil
-	if not quest.Repeatable then
-		if not table.find(profile.questsCompleted, questId) then
-			table.insert(profile.questsCompleted, questId)
-		end
+	if not table.find(profile.questsCompleted, questId) then
+		table.insert(profile.questsCompleted, questId)
 	end
 
 	distributeRewards(player, quest)
