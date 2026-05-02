@@ -45,11 +45,32 @@ return function(Client)
 
 	local BLOCKING = {"CurrentlyAttacking", "Dashing", "Blocking", "Sliding", "Stunned", "Aerial"}
 
-	local cooldownUntil = 0
+	local COOLDOWN_KEY = "Vault"
+
 	local active = false
 
 	local cachedTracks = nil
 	local cachedAnimator = nil
+
+	local function isOnCooldown(Entity)
+		if not Entity or not Entity.Cooldowns or not Entity.Cooldowns.cooldownData then return false end
+		local entry = Entity.Cooldowns.cooldownData[COOLDOWN_KEY]
+		if not entry then return false end
+		if typeof(entry) == "number" then
+			return os.clock() < entry
+		end
+		return entry == true
+	end
+
+	local function startCooldown(Entity)
+		if not Entity or not Entity.Cooldowns then return end
+		Entity.Cooldowns:Add(COOLDOWN_KEY, CFG.Cooldown)
+		if Entity.Cooldowns.DisplayCooldown then
+			pcall(function()
+				Entity.Cooldowns:DisplayCooldown({ Name = COOLDOWN_KEY, Time = CFG.Cooldown })
+			end)
+		end
+	end
 
 	local function highestY(part)
 		return part.Position.Y + (part.Size.Y / 2)
@@ -154,7 +175,7 @@ return function(Client)
 		local Entity = Client.Entity
 		if not Entity or not Entity.Character then return false end
 		if active then return false end
-		if tick() < cooldownUntil then return false end
+		if isOnCooldown(Entity) then return false end
 		if combatLocked(Entity) then return false end
 		if not hasForwardInput(Entity.Character) then return false end
 
@@ -210,7 +231,7 @@ return function(Client)
 				}, CFG.LandingBoostDuration)
 			end
 			active = false
-			cooldownUntil = tick() + CFG.Cooldown
+			startCooldown(Entity)
 			Entity:SetState("Vaulting", nil)
 			if character.Parent then
 				character:SetAttribute("Vaulting", false)
