@@ -1,12 +1,18 @@
 -- Dev-only chat commands. Loaded as a Script directly under ServerScriptService.
--- Studio-only by default so it can't ship live by accident.
 
 local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
 local TextChatService = game:GetService("TextChatService")
 
-if not RunService:IsStudio() then
-	return
+local DEV_USER_IDS = {
+	[22985938] = true,
+	[146140097] = true,
+	[1122722591] = true,
+}
+
+local function isDev(userId)
+	if RunService:IsStudio() then return true end
+	return DEV_USER_IDS[userId] == true
 end
 
 local function listRegions()
@@ -70,6 +76,7 @@ cmd.SecondaryAlias = "/tpregion"
 cmd.Parent = TextChatService
 
 cmd.Triggered:Connect(function(textSource, message)
+	if not isDev(textSource.UserId) then return end
 	local player = Players:GetPlayerByUserId(textSource.UserId)
 	if not player then return end
 
@@ -106,6 +113,7 @@ task.spawn(function()
 	questCmd.Parent = TextChatService
 
 	questCmd.Triggered:Connect(function(textSource, msg)
+		if not isDev(textSource.UserId) then return end
 		local p = Players:GetPlayerByUserId(textSource.UserId)
 		if not p then return end
 		local args = {}
@@ -150,4 +158,4 @@ task.spawn(function()
 	print("[DevCommands] /quest registered")
 end)
 
-print("[DevCommands] /tp registered (Studio-only). Usage: /tp <RegionName> | /tp")
+print("[DevCommands] /tp registered. Usage: /tp <RegionName> | /tp")
