@@ -69,118 +69,33 @@ return function(Client)
 		return "Custom reward"
 	end
 
-	local function ensureTracker(playerGui)
-		if refs.tracker and refs.tracker.Parent then return end
+	local function bindTracker(playerGui)
+		if refs.tracker and refs.tracker.Parent then return true end
 
-		local screen = Instance.new("ScreenGui")
-		screen.Name = "QuestTracker"
-		screen.ResetOnSpawn = false
-		screen.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-		screen.Parent = playerGui
+		local screen = playerGui:FindFirstChild("QuestTracker")
+		if not screen then
+			warn("[QuestClient] PlayerGui.QuestTracker not found — skipping tracker")
+			return false
+		end
 
-		local frame = Instance.new("Frame")
-		frame.Name = "TrackerFrame"
-		frame.AnchorPoint = Vector2.new(1, 0.5)
-		frame.Position = UDim2.new(1, -16, 0.5, 0)
-		frame.Size = UDim2.new(0, 300, 0, 0)
-		frame.AutomaticSize = Enum.AutomaticSize.Y
-		frame.BackgroundColor3 = Color3.fromRGB(20, 20, 24)
-		frame.BackgroundTransparency = 0.2
-		frame.BorderSizePixel = 0
-		frame.Parent = screen
-
-		Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 8)
-		local stroke = Instance.new("UIStroke")
-		stroke.Color = Color3.fromRGB(80, 80, 90)
-		stroke.Thickness = 1
-		stroke.Parent = frame
-
-		local layout = Instance.new("UIListLayout")
-		layout.SortOrder = Enum.SortOrder.LayoutOrder
-		layout.Padding = UDim.new(0, 6)
-		layout.Parent = frame
-
-		local padding = Instance.new("UIPadding")
-		padding.PaddingTop = UDim.new(0, 8)
-		padding.PaddingBottom = UDim.new(0, 10)
-		padding.PaddingLeft = UDim.new(0, 10)
-		padding.PaddingRight = UDim.new(0, 10)
-		padding.Parent = frame
-
-		local title = Instance.new("TextLabel")
-		title.Name = "Title"
-		title.Size = UDim2.new(1, 0, 0, 22)
-		title.BackgroundTransparency = 1
-		title.Font = Enum.Font.GothamBold
-		title.TextSize = 14
-		title.TextColor3 = Color3.fromRGB(255, 220, 120)
-		title.TextXAlignment = Enum.TextXAlignment.Left
-		title.Text = ""
-		title.LayoutOrder = 1
-		title.Parent = frame
-
-		local objectivesBody = Instance.new("TextLabel")
-		objectivesBody.Name = "Objectives"
-		objectivesBody.Size = UDim2.new(1, 0, 0, 0)
-		objectivesBody.AutomaticSize = Enum.AutomaticSize.Y
-		objectivesBody.BackgroundTransparency = 1
-		objectivesBody.Font = Enum.Font.Gotham
-		objectivesBody.RichText = true
-		objectivesBody.TextSize = 13
-		objectivesBody.TextColor3 = Color3.fromRGB(220, 220, 220)
-		objectivesBody.TextXAlignment = Enum.TextXAlignment.Left
-		objectivesBody.TextYAlignment = Enum.TextYAlignment.Top
-		objectivesBody.TextWrapped = true
-		objectivesBody.Text = ""
-		objectivesBody.LayoutOrder = 2
-		objectivesBody.Parent = frame
-
-		local divider = Instance.new("Frame")
-		divider.Name = "Divider"
-		divider.Size = UDim2.new(1, 0, 0, 1)
-		divider.BackgroundColor3 = Color3.fromRGB(70, 70, 80)
-		divider.BackgroundTransparency = 0.4
-		divider.BorderSizePixel = 0
-		divider.LayoutOrder = 3
-		divider.Visible = false
-		divider.Parent = frame
-
-		local rewardsBody = Instance.new("TextLabel")
-		rewardsBody.Name = "Rewards"
-		rewardsBody.Size = UDim2.new(1, 0, 0, 0)
-		rewardsBody.AutomaticSize = Enum.AutomaticSize.Y
-		rewardsBody.BackgroundTransparency = 1
-		rewardsBody.Font = Enum.Font.Gotham
-		rewardsBody.RichText = true
-		rewardsBody.TextSize = 12
-		rewardsBody.TextColor3 = Color3.fromRGB(180, 180, 195)
-		rewardsBody.TextXAlignment = Enum.TextXAlignment.Left
-		rewardsBody.TextYAlignment = Enum.TextYAlignment.Top
-		rewardsBody.TextWrapped = true
-		rewardsBody.Text = ""
-		rewardsBody.LayoutOrder = 4
-		rewardsBody.Parent = frame
-
-		local timer = Instance.new("TextLabel")
-		timer.Name = "Timer"
-		timer.Size = UDim2.new(1, 0, 0, 16)
-		timer.BackgroundTransparency = 1
-		timer.Font = Enum.Font.GothamMedium
-		timer.TextSize = 12
-		timer.TextColor3 = Color3.fromRGB(255, 170, 90)
-		timer.TextXAlignment = Enum.TextXAlignment.Left
-		timer.Text = ""
-		timer.LayoutOrder = 5
-		timer.Visible = false
-		timer.Parent = frame
+		local frame = screen:FindFirstChild("TrackerFrame")
+		if not frame then
+			warn("[QuestClient] QuestTracker.TrackerFrame not found")
+			return false
+		end
 
 		refs.tracker = screen
-		refs.trackerTitle = title
-		refs.trackerObjectives = objectivesBody
-		refs.trackerDivider = divider
-		refs.trackerRewards = rewardsBody
-		refs.trackerTimer = timer
+		refs.trackerTitle = frame:FindFirstChild("Title")
+		refs.trackerObjectives = frame:FindFirstChild("Objectives")
+		refs.trackerDivider = frame:FindFirstChild("Divider")
+		refs.trackerRewards = frame:FindFirstChild("Rewards")
+		refs.trackerTimer = frame:FindFirstChild("Timer")
+
+		if refs.trackerObjectives then refs.trackerObjectives.RichText = true end
+		if refs.trackerRewards then refs.trackerRewards.RichText = true end
+
 		screen.Enabled = false
+		return true
 	end
 
 	local function ensureLog(playerGui)
@@ -741,7 +656,7 @@ return function(Client)
 		if not playerGui then return end
 
 		ensureLog(playerGui)
-		ensureTracker(playerGui)
+		bindTracker(playerGui)
 
 		if Client.QuestCompleteController and Client.QuestCompleteController.SetSound then
 			Client.QuestCompleteController:SetSound(completeSound)
