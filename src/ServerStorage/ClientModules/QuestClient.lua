@@ -69,20 +69,26 @@ return function(Client)
 		return "Custom reward"
 	end
 
+	local function setTrackerVisible(visible)
+		local node = refs.tracker
+		if not node then return end
+		if node:IsA("ScreenGui") then
+			node.Enabled = visible
+		else
+			node.Visible = visible
+		end
+	end
+
 	local function bindTracker(playerGui)
 		if refs.tracker and refs.tracker.Parent then return true end
 
-		local screen = playerGui:FindFirstChild("QuestTracker")
+		local screen = playerGui:FindFirstChild("QuestTracker", true)
 		if not screen then
-			warn("[QuestClient] PlayerGui.QuestTracker not found — skipping tracker")
+			warn("[QuestClient] QuestTracker not found under PlayerGui — skipping tracker")
 			return false
 		end
 
-		local frame = screen:FindFirstChild("TrackerFrame")
-		if not frame then
-			warn("[QuestClient] QuestTracker.TrackerFrame not found")
-			return false
-		end
+		local frame = screen:FindFirstChild("TrackerFrame") or screen
 
 		refs.tracker = screen
 		refs.trackerTitle = frame:FindFirstChild("Title", true)
@@ -94,7 +100,7 @@ return function(Client)
 		if refs.trackerObjectives then refs.trackerObjectives.RichText = true end
 		if refs.trackerRewards then refs.trackerRewards.RichText = true end
 
-		screen.Enabled = false
+		setTrackerVisible(false)
 		return true
 	end
 
@@ -441,12 +447,12 @@ return function(Client)
 		for _ in pairs(activeQuests) do hasAny = true break end
 		if not hasAny then
 			trackedId = nil
-			refs.tracker.Enabled = false
-			refs.trackerTitle.Text = ""
-			refs.trackerObjectives.Text = ""
-			refs.trackerRewards.Text = ""
-			refs.trackerDivider.Visible = false
-			refs.trackerTimer.Visible = false
+			setTrackerVisible(false)
+			if refs.trackerTitle then refs.trackerTitle.Text = "" end
+			if refs.trackerObjectives then refs.trackerObjectives.Text = "" end
+			if refs.trackerRewards then refs.trackerRewards.Text = "" end
+			if refs.trackerDivider then refs.trackerDivider.Visible = false end
+			if refs.trackerTimer then refs.trackerTimer.Visible = false end
 			return
 		end
 
@@ -459,28 +465,30 @@ return function(Client)
 			for k in pairs(activeQuests) do id = k break end
 		end
 		if not id or not activeQuests[id] then
-			refs.tracker.Enabled = false
+			setTrackerVisible(false)
 			return
 		end
 
 		local quest = questDef(id)
-		if not quest then refs.tracker.Enabled = false return end
+		if not quest then setTrackerVisible(false) return end
 
 		local progress = activeQuests[id]
-		refs.tracker.Enabled = true
-		refs.trackerTitle.Text = quest.Name or id
-		refs.trackerObjectives.Text = buildTrackerObjectives(quest, progress)
+		setTrackerVisible(true)
+		if refs.trackerTitle then refs.trackerTitle.Text = quest.Name or id end
+		if refs.trackerObjectives then refs.trackerObjectives.Text = buildTrackerObjectives(quest, progress) end
 
 		local rewardsText = buildTrackerRewards(quest)
-		refs.trackerRewards.Text = rewardsText
-		refs.trackerDivider.Visible = rewardsText ~= ""
+		if refs.trackerRewards then refs.trackerRewards.Text = rewardsText end
+		if refs.trackerDivider then refs.trackerDivider.Visible = rewardsText ~= "" end
 
 		local timeStr = timeRemainingText(progress)
-		if timeStr then
-			refs.trackerTimer.Text = timeStr
-			refs.trackerTimer.Visible = true
-		else
-			refs.trackerTimer.Visible = false
+		if refs.trackerTimer then
+			if timeStr then
+				refs.trackerTimer.Text = timeStr
+				refs.trackerTimer.Visible = true
+			else
+				refs.trackerTimer.Visible = false
+			end
 		end
 	end
 
