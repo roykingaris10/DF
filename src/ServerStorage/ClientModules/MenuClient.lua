@@ -446,6 +446,16 @@ return function(Client)
 		end
 	end
 
+	local openSound = Instance.new("Sound")
+	openSound.SoundId = "rbxassetid://10128766965"
+	openSound.Volume = 0.45
+	openSound.Parent = SoundService
+
+	local function playOpenSound()
+		openSound:Stop()
+		openSound:Play()
+	end
+
 	local function openProfileFrame()
 		if not UI then return end
 		local QuestLogFrame = UI:FindFirstChild("QuestLogFrame")
@@ -461,10 +471,23 @@ return function(Client)
 
 		QuestLogFrame.Visible = true
 		ProfileFrame.Visible = true
+		playOpenSound()
 
 		if Client.ProfileClient and Client.ProfileClient.OpenProfile then
 			Client.ProfileClient:OpenProfile()
 		end
+	end
+
+	local function openQuestLogFrame()
+		if not UI then return end
+		local QuestLogFrame = UI:FindFirstChild("QuestLogFrame")
+		if not QuestLogFrame then
+			warn("[MenuClient] UI.QuestLogFrame not found")
+			return
+		end
+
+		QuestLogFrame.Visible = true
+		playOpenSound()
 	end
 
 	local function onButtonClick(data)
@@ -509,8 +532,10 @@ return function(Client)
 			closeMenu()
 		end)
 
-		if holderName == "progHolder" then
+		if holderName == "profileHolder" then
 			task.delay(0.22, openProfileFrame)
+		elseif holderName == "progHolder" then
+			task.delay(0.22, openQuestLogFrame)
 		end
 
 		print("[Menu] Clicked:", holderName)
