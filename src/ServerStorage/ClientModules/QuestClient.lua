@@ -98,16 +98,19 @@ return function(Client)
 
 		refs.tracker = root
 		refs.trackerTitle = find("Title", "TitleLabel")
-		refs.trackerObjectives = find("Objectives", "ObjectiveText", "ObjectivesText", "ObjectivesBody")
+		refs.trackerObjectivesScroll = find("ObjectiveScroll", "ObjectivesScroll", "ObjectiveContainer")
+		refs.trackerRewardsScroll = find("RewardsScroll", "RewardScroll", "RewardsContainer")
 		refs.trackerDivider = find("Divider")
-		refs.trackerRewards = find("Rewards", "RewardsText", "RewardText", "RewardsBody")
 		refs.trackerTimer = find("Timer", "TimerLabel")
-
-		if refs.trackerObjectives then refs.trackerObjectives.RichText = true end
-		if refs.trackerRewards then refs.trackerRewards.RichText = true end
 
 		setTrackerVisible(false)
 		return true
+	end
+
+	local function getKitTemplate(name)
+		local kits = ReplicatedStorage:FindFirstChild("Kits")
+		local ui = kits and kits:FindFirstChild("UI")
+		return ui and ui:FindFirstChild(name) or nil
 	end
 
 	local function ensureLog(playerGui)
@@ -386,23 +389,56 @@ return function(Client)
 		return string.format("Time left: %ds", s)
 	end
 
-	local function buildTrackerObjectives(quest, progress)
-		local lines = {}
+	local CLONE_TAG = "QuestTrackerClone"
+
+	local function clearClones(container)
+		if not container then return end
+		for _, child in ipairs(container:GetChildren()) do
+			if child:GetAttribute(CLONE_TAG) then
+				child:Destroy()
+			end
+		end
+	end
+
+	local function spawnLine(container, template, text, order)
+		if not container or not template then return end
+		local clone = template:Clone()
+		clone:SetAttribute(CLONE_TAG, true)
+		clone.LayoutOrder = order
+		clone.Visible = true
+		clone.Text = string.upper(tostring(text or ""))
+		clone.Parent = container
+	end
+
+	local function fillObjectives(quest, progress)
+		local container = refs.trackerObjectivesScroll
+		if not container then return end
+		local template = getKitTemplate("ObjectiveText")
+		if not template then return end
+
+		clearClones(container)
+
 		local stages = quest.Stages or { { Objectives = quest.Objectives } }
 		local currentStage = progress.Stage or 1
 		local readyToTurnIn = currentStage > #stages
+		local order = 0
+
+		local function add(text)
+			order += 1
+			spawnLine(container, template, text, order)
+		end
 
 		for stageIdx, stage in ipairs(stages) do
 			local stageDone = stageIdx < currentStage or readyToTurnIn
 			local stageActive = stageIdx == currentStage and not readyToTurnIn
-
 			local stageTitle = stage.Title or ("Stage " .. stageIdx)
+
 			if stageDone then
-				table.insert(lines, string.format("<font color=\"#7FCC8F\"><s>✓ %s</s></font>", stageTitle))
+				add("✓ " .. stageTitle)
 			elseif stageActive then
-				table.insert(lines, string.format("<font color=\"#FFDC78\"><b>▸ %s</b></font>", stageTitle))
+				add("◆ " .. stageTitle)
 			else
-				table.insert(lines, string.format("<font color=\"#888899\">○ %s</font>", stageTitle))
+				add("◇ " .. stageTitle)
 			end
 
 			if stage.Objectives then
@@ -417,33 +453,38 @@ return function(Client)
 						have = 0
 					end
 					local desc = obj.Description or obj.Id or "?"
-					local objDone = have >= need
-					local line
-					if stageDone or objDone then
-						line = string.format("    <font color=\"#7FCC8F\"><s>%s (%d/%d)</s></font>", desc, have, need)
+					if stageDone or have >= need then
+						add(string.format("    ✓ %s (%d/%d)", desc, have, need))
 					elseif stageActive then
-						line = string.format("    <font color=\"#E8E8E8\">%s (%d/%d)</font>", desc, have, need)
+						add(string.format("    ◆ %s (%d/%d)", desc, have, need))
 					else
-						line = string.format("    <font color=\"#777788\">%s</font>", desc)
+						add(string.format("    ◇ %s", desc))
 					end
-					table.insert(lines, line)
 				end
 			end
 		end
 
 		if readyToTurnIn and quest.TurnInTo then
-			table.insert(lines, string.format("<font color=\"#FFDC78\"><b>▸ Turn in to %s</b></font>", quest.TurnInTo))
+			add("◆ Turn in to " .. quest.TurnInTo)
 		end
-
-		return table.concat(lines, "\n")
 	end
 
-	local function buildTrackerRewards(quest)
-		local lines = {}
+	local function fillRewards(quest)
+		local container = refs.trackerRewardsScroll
+		if not container then return false end
+		local template = getKitTemplate("RewardsText")
+		if not template then return false end
+
+		clearClones(container)
+
+		local order = 0
+		local any = false
 		for _, reward in ipairs(quest.Rewards or {}) do
-			table.insert(lines, "  +  " .. rewardLine(reward))
+			order += 1
+			any = true
+			spawnLine(container, template, "◆ " .. rewardLine(reward), order)
 		end
-		return table.concat(lines, "\n")
+		return any
 	end
 
 	function QuestClient:RefreshTracker()
@@ -455,8 +496,8 @@ return function(Client)
 			trackedId = nil
 			setTrackerVisible(false)
 			if refs.trackerTitle then refs.trackerTitle.Text = "" end
-			if refs.trackerObjectives then refs.trackerObjectives.Text = "" end
-			if refs.trackerRewards then refs.trackerRewards.Text = "" end
+			clearClones(refs.trackerObjectivesScroll)
+			clearClones(refs.trackerRewardsScroll)
 			if refs.trackerDivider then refs.trackerDivider.Visible = false end
 			if refs.trackerTimer then refs.trackerTimer.Visible = false end
 			return
@@ -480,17 +521,20 @@ return function(Client)
 
 		local progress = activeQuests[id]
 		setTrackerVisible(true)
-		if refs.trackerTitle then refs.trackerTitle.Text = quest.Name or id end
-		if refs.trackerObjectives then refs.trackerObjectives.Text = buildTrackerObjectives(quest, progress) end
 
-		local rewardsText = buildTrackerRewards(quest)
-		if refs.trackerRewards then refs.trackerRewards.Text = rewardsText end
-		if refs.trackerDivider then refs.trackerDivider.Visible = rewardsText ~= "" end
+		if refs.trackerTitle then
+			refs.trackerTitle.Text = string.upper(quest.Name or id)
+		end
+
+		fillObjectives(quest, progress)
+		local hasRewards = fillRewards(quest)
+
+		if refs.trackerDivider then refs.trackerDivider.Visible = hasRewards end
 
 		local timeStr = timeRemainingText(progress)
 		if refs.trackerTimer then
 			if timeStr then
-				refs.trackerTimer.Text = timeStr
+				refs.trackerTimer.Text = string.upper(timeStr)
 				refs.trackerTimer.Visible = true
 			else
 				refs.trackerTimer.Visible = false
