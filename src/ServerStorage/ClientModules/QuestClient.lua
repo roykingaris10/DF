@@ -431,20 +431,25 @@ return function(Client)
 	local DONE_PREFIX = '<font color="#7FCC8F">✓</font>'
 	local ACTIVE_PREFIX = '<font color="#7FCC8F"><b>◇</b></font>'
 	local PENDING_PREFIX = '<font color="rgb(150,150,165)">·</font>'
+	local REWARD_PREFIX = '🔹'
 
 	local DONE_COLOR = "rgb(140,140,150)"
 	local ACTIVE_COLOR = "#7FCC8F"
 	local PENDING_COLOR = "rgb(190,190,200)"
 
-	local RARITY_COLORS = {
-		Common = Color3.fromRGB(225, 225, 235),
-		Rare = Color3.fromRGB(95, 175, 255),
-		Legendary = Color3.fromRGB(255, 200, 80),
-		Cursed = Color3.fromRGB(180, 100, 255),
+	local REWARD_COLORS = {
+		XP = "#7FCC8F",          -- green
+		Beli = "#FFD45A",        -- yellow
+		Item = "#5BB8FF",        -- blue
+		Bounty = "#E66060",      -- red
+		Reputation = "#C49BFF",  -- purple
+		Title = "#FFAA66",       -- orange
+		Skill = "#5BE5E5",       -- cyan
+		Custom = "rgb(200,200,210)",
 	}
 
-	local function rarityColor(rarity)
-		return RARITY_COLORS[rarity] or RARITY_COLORS.Common
+	local function rewardColor(reward)
+		return REWARD_COLORS[reward.Type] or REWARD_COLORS.Custom
 	end
 
 	local function spawnLine(container, template, text, order)
@@ -520,28 +525,24 @@ return function(Client)
 	local function fillRewards(quest)
 		local container = refs.trackerRewardsScroll
 		if not container then return false end
+		local template = getKitTemplate("RewardsText")
+		if not template then return false end
 
 		clearClones(container)
 
 		local order = 0
 		local any = false
 		for _, reward in ipairs(quest.Rewards or {}) do
-			local template = getRewardFrameTemplate(reward.Type)
-			if template then
-				order += 1
-				any = true
-				local clone = template:Clone()
-				clone:SetAttribute(CLONE_TAG, true)
-				clone.LayoutOrder = order
-				clone.Visible = true
-
-				local img = clone:FindFirstChild("ImageLabel", true)
-				if img and img:IsA("ImageLabel") then
-					img.ImageColor3 = rarityColor(reward.Rarity)
-				end
-
-				clone.Parent = container
-			end
+			order += 1
+			any = true
+			local color = rewardColor(reward)
+			local text = string.format(
+				'%s <font color="%s">%s</font>',
+				REWARD_PREFIX,
+				color,
+				string.upper(rewardLine(reward))
+			)
+			spawnLine(container, template, text, order)
 		end
 		return any
 	end
