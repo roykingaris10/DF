@@ -82,20 +82,26 @@ return function(Client)
 	local function bindTracker(playerGui)
 		if refs.tracker and refs.tracker.Parent then return true end
 
-		local screen = playerGui:FindFirstChild("QuestTracker", true)
-		if not screen then
+		local root = playerGui:FindFirstChild("QuestTracker", true)
+		if not root then
 			warn("[QuestClient] QuestTracker not found under PlayerGui — skipping tracker")
 			return false
 		end
 
-		local frame = screen:FindFirstChild("TrackerFrame") or screen
+		local function find(...)
+			for _, name in ipairs({ ... }) do
+				local hit = root:FindFirstChild(name, true)
+				if hit then return hit end
+			end
+			return nil
+		end
 
-		refs.tracker = screen
-		refs.trackerTitle = frame:FindFirstChild("Title", true)
-		refs.trackerObjectives = frame:FindFirstChild("Objectives", true)
-		refs.trackerDivider = frame:FindFirstChild("Divider", true)
-		refs.trackerRewards = frame:FindFirstChild("Rewards", true)
-		refs.trackerTimer = frame:FindFirstChild("Timer", true)
+		refs.tracker = root
+		refs.trackerTitle = find("Title", "TitleLabel")
+		refs.trackerObjectives = find("Objectives", "ObjectiveText", "ObjectivesText", "ObjectivesBody")
+		refs.trackerDivider = find("Divider")
+		refs.trackerRewards = find("Rewards", "RewardsText", "RewardText", "RewardsBody")
+		refs.trackerTimer = find("Timer", "TimerLabel")
 
 		if refs.trackerObjectives then refs.trackerObjectives.RichText = true end
 		if refs.trackerRewards then refs.trackerRewards.RichText = true end
