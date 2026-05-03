@@ -461,6 +461,8 @@ return function(Client)
 		openSound:Play()
 	end
 
+	local profileAncestors = {}
+
 	local function openProfileFrame()
 		if not UI then return end
 
@@ -470,9 +472,13 @@ return function(Client)
 			return
 		end
 
+		profileAncestors = {}
 		local parent = ProfileFrame.Parent
 		while parent and parent ~= UI do
 			if parent:IsA("GuiObject") then
+				if not parent.Visible then
+					table.insert(profileAncestors, parent)
+				end
 				parent.Visible = true
 			end
 			parent = parent.Parent
@@ -489,11 +495,17 @@ return function(Client)
 	local function closeProfileFrame()
 		if not UI then return end
 		local ProfileFrame = UI:FindFirstChild("ProfileFrame", true)
-		if not ProfileFrame then return end
 		if Client.ProfileClient and Client.ProfileClient.CloseProfile then
 			Client.ProfileClient:CloseProfile()
 		end
-		ProfileFrame.Visible = false
+		if ProfileFrame then ProfileFrame.Visible = false end
+
+		for _, ancestor in ipairs(profileAncestors) do
+			if ancestor and ancestor.Parent then
+				ancestor.Visible = false
+			end
+		end
+		profileAncestors = {}
 	end
 
 	local function openQuestLogFrame()
@@ -515,9 +527,23 @@ return function(Client)
 		QuestLogFrame.Visible = false
 	end
 
+	local function openInventoryFrame()
+		if Client.UISetup and Client.UISetup.OpenCoreMenu then
+			Client.UISetup:OpenCoreMenu()
+		end
+		playOpenSound()
+	end
+
+	local function closeInventoryFrame()
+		if Client.UISetup and Client.UISetup.CloseCoreMenu then
+			Client.UISetup:CloseCoreMenu()
+		end
+	end
+
 	local screens = {
-		profile = { open = openProfileFrame, close = closeProfileFrame },
-		questlog = { open = openQuestLogFrame, close = closeQuestLogFrame },
+		profile   = { open = openProfileFrame,   close = closeProfileFrame },
+		questlog  = { open = openQuestLogFrame,  close = closeQuestLogFrame },
+		inventory = { open = openInventoryFrame, close = closeInventoryFrame },
 	}
 
 	local currentScreen = nil
@@ -597,6 +623,8 @@ return function(Client)
 			task.delay(0.22, function() openScreen("profile") end)
 		elseif holderName == "progHolder" then
 			task.delay(0.22, function() openScreen("questlog") end)
+		elseif holderName == "invHolder" then
+			task.delay(0.22, function() openScreen("inventory") end)
 		end
 
 		print("[Menu] Clicked:", holderName)

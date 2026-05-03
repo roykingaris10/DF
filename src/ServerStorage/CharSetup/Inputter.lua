@@ -270,7 +270,11 @@ return function(Client)
 			local Character = player.Character;
 			if not Character then return end;
 			if not Held then return end;
-			Client.UISetup:ToggleCoreMenu()
+			if Client.MenuClient and Client.MenuClient.ToggleScreen then
+				Client.MenuClient:ToggleScreen("inventory")
+			else
+				Client.UISetup:ToggleCoreMenu()
+			end
 			return Enum.ContextActionResult.Pass
 		end;
 

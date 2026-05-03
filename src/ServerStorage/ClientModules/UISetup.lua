@@ -814,6 +814,18 @@ return function(Client)
 			opencore = true
 		end
 	end
+
+	function UISetup:IsCoreMenuOpen()
+		return opencore
+	end
+
+	function UISetup:OpenCoreMenu()
+		if not opencore then self:ToggleCoreMenu() end
+	end
+
+	function UISetup:CloseCoreMenu()
+		if opencore then self:ToggleCoreMenu() end
+	end
 	
 	local pingDisplay = UI:WaitForChild("pingDisplay")
 
