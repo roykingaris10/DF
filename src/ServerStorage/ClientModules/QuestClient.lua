@@ -400,13 +400,18 @@ return function(Client)
 		end
 	end
 
+	local DONE_PREFIX = '<font color="#7FCC8F">✚</font>'
+	local ACTIVE_PREFIX = '<font color="rgb(220,220,220)">◇</font>'
+	local PENDING_PREFIX = '<font color="rgb(150,150,165)">·</font>'
+
 	local function spawnLine(container, template, text, order)
 		if not container or not template then return end
 		local clone = template:Clone()
 		clone:SetAttribute(CLONE_TAG, true)
 		clone.LayoutOrder = order
 		clone.Visible = true
-		clone.Text = string.upper(tostring(text or ""))
+		clone.RichText = true
+		clone.Text = tostring(text or "")
 		clone.Parent = container
 	end
 
@@ -431,14 +436,14 @@ return function(Client)
 		for stageIdx, stage in ipairs(stages) do
 			local stageDone = stageIdx < currentStage or readyToTurnIn
 			local stageActive = stageIdx == currentStage and not readyToTurnIn
-			local stageTitle = stage.Title or ("Stage " .. stageIdx)
+			local stageTitle = string.upper(stage.Title or ("Stage " .. stageIdx))
 
 			if stageDone then
-				add("✓ " .. stageTitle)
+				add(string.format("%s <s>%s</s>", DONE_PREFIX, stageTitle))
 			elseif stageActive then
-				add("◆ " .. stageTitle)
+				add(string.format("%s %s", ACTIVE_PREFIX, stageTitle))
 			else
-				add("◇ " .. stageTitle)
+				add(string.format("%s %s", PENDING_PREFIX, stageTitle))
 			end
 
 			if stage.Objectives then
@@ -452,20 +457,20 @@ return function(Client)
 					else
 						have = 0
 					end
-					local desc = obj.Description or obj.Id or "?"
+					local desc = string.upper(obj.Description or obj.Id or "?")
 					if stageDone or have >= need then
-						add(string.format("    ✓ %s (%d/%d)", desc, have, need))
+						add(string.format("    %s <s>%s (%d/%d)</s>", DONE_PREFIX, desc, have, need))
 					elseif stageActive then
-						add(string.format("    ◆ %s (%d/%d)", desc, have, need))
+						add(string.format("    %s %s (%d/%d)", ACTIVE_PREFIX, desc, have, need))
 					else
-						add(string.format("    ◇ %s", desc))
+						add(string.format("    %s %s", PENDING_PREFIX, desc))
 					end
 				end
 			end
 		end
 
 		if readyToTurnIn and quest.TurnInTo then
-			add("◆ Turn in to " .. quest.TurnInTo)
+			add(string.format("%s %s", ACTIVE_PREFIX, string.upper("Turn in to " .. quest.TurnInTo)))
 		end
 	end
 
@@ -482,7 +487,7 @@ return function(Client)
 		for _, reward in ipairs(quest.Rewards or {}) do
 			order += 1
 			any = true
-			spawnLine(container, template, "◆ " .. rewardLine(reward), order)
+			spawnLine(container, template, string.format("%s %s", ACTIVE_PREFIX, string.upper(rewardLine(reward))), order)
 		end
 		return any
 	end
