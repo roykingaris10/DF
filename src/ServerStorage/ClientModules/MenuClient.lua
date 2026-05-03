@@ -14,6 +14,10 @@ return function(Client)
 	local hoverConnections = {}
 	local activeTweens = {}
 
+	local closeCurrentScreen
+	local openScreen
+	local toggleScreen
+
 
 	local MenuBlurTemplate = ReplicatedStorage:WaitForChild("Kits"):WaitForChild("UI"):WaitForChild("MenuBlur")
 	local activeBlur = nil
@@ -226,6 +230,9 @@ return function(Client)
 
 	local function openMenu()
 		if isAnimating or isOpen then return end
+
+		if closeCurrentScreen then closeCurrentScreen() end
+
 		isAnimating = true
 		isOpen = true
 
@@ -481,6 +488,16 @@ return function(Client)
 		end
 	end
 
+	local function closeProfileFrame()
+		if not UI then return end
+		local ProfileFrame = UI:FindFirstChild("ProfileFrame", true)
+		if not ProfileFrame then return end
+		if Client.ProfileClient and Client.ProfileClient.CloseProfile then
+			Client.ProfileClient:CloseProfile()
+		end
+		ProfileFrame.Visible = false
+	end
+
 	local function openQuestLogFrame()
 		if not UI then return end
 		local QuestLogFrame = UI:FindFirstChild("QuestLogFrame")
@@ -491,6 +508,49 @@ return function(Client)
 
 		QuestLogFrame.Visible = true
 		playOpenSound()
+	end
+
+	local function closeQuestLogFrame()
+		if not UI then return end
+		local QuestLogFrame = UI:FindFirstChild("QuestLogFrame")
+		if not QuestLogFrame then return end
+		QuestLogFrame.Visible = false
+	end
+
+	local screens = {
+		profile = { open = openProfileFrame, close = closeProfileFrame },
+		questlog = { open = openQuestLogFrame, close = closeQuestLogFrame },
+	}
+
+	local currentScreen = nil
+
+	closeCurrentScreen = function()
+		if not currentScreen then return end
+		local s = screens[currentScreen]
+		currentScreen = nil
+		if s and s.close then
+			s.close()
+		end
+	end
+
+	openScreen = function(name)
+		if currentScreen == name then return end
+		if currentScreen then
+			local prev = screens[currentScreen]
+			if prev and prev.close then prev.close() end
+		end
+		local s = screens[name]
+		if not s or not s.open then return end
+		currentScreen = name
+		s.open()
+	end
+
+	toggleScreen = function(name)
+		if currentScreen == name then
+			closeCurrentScreen()
+		else
+			openScreen(name)
+		end
 	end
 
 	local function onButtonClick(data)
@@ -536,9 +596,9 @@ return function(Client)
 		end)
 
 		if holderName == "profileHolder" then
-			task.delay(0.22, openProfileFrame)
+			task.delay(0.22, function() toggleScreen("profile") end)
 		elseif holderName == "progHolder" then
-			task.delay(0.22, openQuestLogFrame)
+			task.delay(0.22, function() toggleScreen("questlog") end)
 		end
 
 		print("[Menu] Clicked:", holderName)
@@ -595,6 +655,12 @@ return function(Client)
 			if gameProcessed then return end
 			if input.KeyCode == Enum.KeyCode.M then
 				toggleMenu()
+			elseif input.KeyCode == Enum.KeyCode.Escape then
+				if currentScreen then
+					closeCurrentScreen()
+				elseif isOpen then
+					closeMenu()
+				end
 			end
 		end)
 		table.insert(connections, inputConn)
@@ -650,6 +716,22 @@ return function(Client)
 
 	function MenuClient:Toggle()
 		toggleMenu()
+	end
+
+	function MenuClient:OpenScreen(name)
+		openScreen(name)
+	end
+
+	function MenuClient:CloseScreen()
+		closeCurrentScreen()
+	end
+
+	function MenuClient:ToggleScreen(name)
+		toggleScreen(name)
+	end
+
+	function MenuClient:GetCurrentScreen()
+		return currentScreen
 	end
 
 	function MenuClient:IsOpen()
