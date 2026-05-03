@@ -793,35 +793,26 @@ return function(Client)
 		local HUDUI = PlayerGui:WaitForChild("HUD")
 		local MainTab = UI.MainTab
 		local HUDHolder = HUDUI.HUDHolder
-		local ProfileFrame = UI.ProfileFrame
-		local InventoryFrame = UI.InventoryFrame
-		-- add future display frame
-		
+
 		if opencore then
 			MainTab.BackgroundTransparency = 1
-			MainTab.ProfileFrame.Visible = false
 			MainTab.InventoryFrame.Visible = false
 			MainTab.Charbox.Visible = false
 			MainTab.accessFrame.Visible = false
 			MainTab.access2Frame.Visible = false
 			HUDHolder.Visible = true
-			Client.ProfileClient:CloseProfile()
 			Client.InventoryClient:VisibleToolbar(false)
 			opencore = false
 		else
 			MainTab.BackgroundTransparency = 0.4
-			MainTab.ProfileFrame.Visible = true
 			MainTab.InventoryFrame.Visible = true
 			MainTab.Charbox.Visible = true
 			MainTab.accessFrame.Visible = true
 			MainTab.access2Frame.Visible = true
 			HUDHolder.Visible = false
-			Client.ProfileClient:OpenProfile()
 			Client.InventoryClient:VisibleToolbar(true)
 			opencore = true
 		end
-		
-		
 	end
 	
 	local pingDisplay = UI:WaitForChild("pingDisplay")

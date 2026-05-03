@@ -446,6 +446,27 @@ return function(Client)
 		end
 	end
 
+	local function openProfileFrame()
+		if not UI then return end
+		local QuestLogFrame = UI:FindFirstChild("QuestLogFrame")
+		if not QuestLogFrame then
+			warn("[MenuClient] UI.QuestLogFrame not found")
+			return
+		end
+		local ProfileFrame = QuestLogFrame:FindFirstChild("ProfileFrame")
+		if not ProfileFrame then
+			warn("[MenuClient] QuestLogFrame.ProfileFrame not found")
+			return
+		end
+
+		QuestLogFrame.Visible = true
+		ProfileFrame.Visible = true
+
+		if Client.ProfileClient and Client.ProfileClient.OpenProfile then
+			Client.ProfileClient:OpenProfile()
+		end
+	end
+
 	local function onButtonClick(data)
 		if not isOpen then return end
 
@@ -482,11 +503,17 @@ return function(Client)
 			end)
 		end
 
+		local holderName = data.holder and data.holder.Name
+
 		task.delay(0.15, function()
 			closeMenu()
 		end)
 
-		print("[Menu] Clicked:", data.holder.Name)
+		if holderName == "progHolder" then
+			task.delay(0.22, openProfileFrame)
+		end
+
+		print("[Menu] Clicked:", holderName)
 	end
 
 	local function setupHoverEffects()
