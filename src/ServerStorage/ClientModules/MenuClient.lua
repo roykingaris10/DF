@@ -231,8 +231,6 @@ return function(Client)
 	local function openMenu()
 		if isAnimating or isOpen then return end
 
-		if closeCurrentScreen then closeCurrentScreen() end
-
 		isAnimating = true
 		isOpen = true
 
@@ -596,9 +594,9 @@ return function(Client)
 		end)
 
 		if holderName == "profileHolder" then
-			task.delay(0.22, function() toggleScreen("profile") end)
+			task.delay(0.22, function() openScreen("profile") end)
 		elseif holderName == "progHolder" then
-			task.delay(0.22, function() toggleScreen("questlog") end)
+			task.delay(0.22, function() openScreen("questlog") end)
 		end
 
 		print("[Menu] Clicked:", holderName)
