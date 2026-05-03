@@ -85,11 +85,11 @@ return function(Client)
 		end
 
 		refs.tracker = screen
-		refs.trackerTitle = frame:FindFirstChild("Title")
-		refs.trackerObjectives = frame:FindFirstChild("Objectives")
-		refs.trackerDivider = frame:FindFirstChild("Divider")
-		refs.trackerRewards = frame:FindFirstChild("Rewards")
-		refs.trackerTimer = frame:FindFirstChild("Timer")
+		refs.trackerTitle = frame:FindFirstChild("Title", true)
+		refs.trackerObjectives = frame:FindFirstChild("Objectives", true)
+		refs.trackerDivider = frame:FindFirstChild("Divider", true)
+		refs.trackerRewards = frame:FindFirstChild("Rewards", true)
+		refs.trackerTimer = frame:FindFirstChild("Timer", true)
 
 		if refs.trackerObjectives then refs.trackerObjectives.RichText = true end
 		if refs.trackerRewards then refs.trackerRewards.RichText = true end
