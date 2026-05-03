@@ -479,6 +479,21 @@ return function(Client)
 		end
 	end
 
+	local REWARD_COLORS = {
+		XP = "#7FCC8F",          -- green
+		Beli = "#FFD45A",        -- yellow
+		Item = "#5BB8FF",        -- blue
+		Bounty = "#E66060",      -- red
+		Reputation = "#C49BFF",  -- purple
+		Title = "#FFAA66",       -- orange
+		Skill = "#5BE5E5",       -- cyan
+		Custom = "rgb(200,200,210)",
+	}
+
+	local function rewardColor(reward)
+		return REWARD_COLORS[reward.Type] or REWARD_COLORS.Custom
+	end
+
 	local function fillRewards(quest)
 		local container = refs.trackerRewardsScroll
 		if not container then return false end
@@ -492,7 +507,14 @@ return function(Client)
 		for _, reward in ipairs(quest.Rewards or {}) do
 			order += 1
 			any = true
-			spawnLine(container, template, string.format("%s %s", REWARD_PREFIX, string.upper(rewardLine(reward))), order)
+			local color = rewardColor(reward)
+			local text = string.format(
+				'%s <font color="%s">%s</font>',
+				REWARD_PREFIX,
+				color,
+				string.upper(rewardLine(reward))
+			)
+			spawnLine(container, template, text, order)
 		end
 		return any
 	end
