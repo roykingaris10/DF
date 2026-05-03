@@ -400,9 +400,14 @@ return function(Client)
 		end
 	end
 
-	local DONE_PREFIX = '<font color="#7FCC8F">✚</font>'
-	local ACTIVE_PREFIX = '<font color="rgb(220,220,220)">◇</font>'
+	local DONE_PREFIX = '<font color="#7FCC8F">✓</font>'
+	local ACTIVE_PREFIX = '<font color="#7FCC8F"><b>◇</b></font>'
 	local PENDING_PREFIX = '<font color="rgb(150,150,165)">·</font>'
+	local REWARD_PREFIX = '🔹'
+
+	local DONE_COLOR = "rgb(140,140,150)"
+	local ACTIVE_COLOR = "#7FCC8F"
+	local PENDING_COLOR = "rgb(190,190,200)"
 
 	local function spawnLine(container, template, text, order)
 		if not container or not template then return end
@@ -439,11 +444,11 @@ return function(Client)
 			local stageTitle = string.upper(stage.Title or ("Stage " .. stageIdx))
 
 			if stageDone then
-				add(string.format("%s <s>%s</s>", DONE_PREFIX, stageTitle))
+				add(string.format('%s <font color="%s"><i><b>"%s"</b></i></font>', DONE_PREFIX, DONE_COLOR, stageTitle))
 			elseif stageActive then
-				add(string.format("%s %s", ACTIVE_PREFIX, stageTitle))
+				add(string.format('%s <font color="%s"><i><b>"%s"</b></i></font>', ACTIVE_PREFIX, ACTIVE_COLOR, stageTitle))
 			else
-				add(string.format("%s %s", PENDING_PREFIX, stageTitle))
+				add(string.format('%s <font color="%s"><i><b>"%s"</b></i></font>', PENDING_PREFIX, PENDING_COLOR, stageTitle))
 			end
 
 			if stage.Objectives then
@@ -459,18 +464,18 @@ return function(Client)
 					end
 					local desc = string.upper(obj.Description or obj.Id or "?")
 					if stageDone or have >= need then
-						add(string.format("    %s <s>%s (%d/%d)</s>", DONE_PREFIX, desc, have, need))
+						add(string.format('    %s <font color="%s">%s (%d/%d)</font>', DONE_PREFIX, DONE_COLOR, desc, have, need))
 					elseif stageActive then
-						add(string.format("    %s %s (%d/%d)", ACTIVE_PREFIX, desc, have, need))
+						add(string.format('    %s <font color="%s"><b>%s (%d/%d)</b></font>', ACTIVE_PREFIX, ACTIVE_COLOR, desc, have, need))
 					else
-						add(string.format("    %s %s", PENDING_PREFIX, desc))
+						add(string.format('    %s <font color="%s">%s</font>', PENDING_PREFIX, PENDING_COLOR, desc))
 					end
 				end
 			end
 		end
 
 		if readyToTurnIn and quest.TurnInTo then
-			add(string.format("%s %s", ACTIVE_PREFIX, string.upper("Turn in to " .. quest.TurnInTo)))
+			add(string.format('%s <font color="%s"><b>%s</b></font>', ACTIVE_PREFIX, ACTIVE_COLOR, string.upper("Turn in to " .. quest.TurnInTo)))
 		end
 	end
 
@@ -487,7 +492,7 @@ return function(Client)
 		for _, reward in ipairs(quest.Rewards or {}) do
 			order += 1
 			any = true
-			spawnLine(container, template, string.format("%s %s", ACTIVE_PREFIX, string.upper(rewardLine(reward))), order)
+			spawnLine(container, template, string.format("%s %s", REWARD_PREFIX, string.upper(rewardLine(reward))), order)
 		end
 		return any
 	end
