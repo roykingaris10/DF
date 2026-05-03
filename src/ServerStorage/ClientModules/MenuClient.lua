@@ -458,18 +458,21 @@ return function(Client)
 
 	local function openProfileFrame()
 		if not UI then return end
-		local QuestLogFrame = UI:FindFirstChild("QuestLogFrame")
-		if not QuestLogFrame then
-			warn("[MenuClient] UI.QuestLogFrame not found")
-			return
-		end
-		local ProfileFrame = QuestLogFrame:FindFirstChild("ProfileFrame")
+
+		local ProfileFrame = UI:FindFirstChild("ProfileFrame", true)
 		if not ProfileFrame then
-			warn("[MenuClient] QuestLogFrame.ProfileFrame not found")
+			warn("[MenuClient] ProfileFrame not found anywhere under UI")
 			return
 		end
 
-		QuestLogFrame.Visible = true
+		local parent = ProfileFrame.Parent
+		while parent and parent ~= UI do
+			if parent:IsA("GuiObject") then
+				parent.Visible = true
+			end
+			parent = parent.Parent
+		end
+
 		ProfileFrame.Visible = true
 		playOpenSound()
 

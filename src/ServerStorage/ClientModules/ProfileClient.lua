@@ -29,7 +29,11 @@ return function(Client)
 	function ProfileClient:SetupProfile()
 		local UserFolder = player.StatFolder.UserFolder
 		local UI = PlayerGui:WaitForChild("UI")
-		local ProfileFrame = UI.QuestLogFrame.ProfileFrame
+		local ProfileFrame = UI:FindFirstChild("ProfileFrame", true)
+		if not ProfileFrame then
+			warn("[ProfileClient] ProfileFrame not found anywhere under PlayerGui.UI — skipping SetupProfile")
+			return
+		end
 		
 		local ProfilePage = ProfileFrame.ProfilePage
 		local SummaryPage = ProfileFrame.SummaryPage
@@ -84,7 +88,11 @@ return function(Client)
 	function ProfileClient:OpenProfile()
 		local UserFolder = player.StatFolder.UserFolder
 		local UI = PlayerGui:WaitForChild("UI")
-		local ProfileFrame = UI.QuestLogFrame.ProfileFrame
+		local ProfileFrame = UI:FindFirstChild("ProfileFrame", true)
+		if not ProfileFrame then
+			warn("[ProfileClient] ProfileFrame not found — OpenProfile skipped")
+			return
+		end
 
 		local ProfilePage = ProfileFrame.ProfilePage
 		local SummaryPage = ProfileFrame.SummaryPage
@@ -103,7 +111,8 @@ return function(Client)
 	function ProfileClient:CloseProfile()
 		local UserFolder = player.StatFolder.UserFolder
 		local UI = PlayerGui:WaitForChild("UI")
-		local ProfileFrame = UI.QuestLogFrame.ProfileFrame
+		local ProfileFrame = UI:FindFirstChild("ProfileFrame", true)
+		if not ProfileFrame then return end
 
 		local ProfilePage = ProfileFrame.ProfilePage
 		local SummaryPage = ProfileFrame.SummaryPage
@@ -117,7 +126,7 @@ return function(Client)
 		
 		local UserFolder = player.StatFolder.UserFolder
 		local UI = PlayerGui.UI
-		local ProfileFrame = UI.QuestLogFrame.ProfileFrame
+		local ProfileFrame = UI:FindFirstChild("ProfileFrame", true)
 		local infoFrame = ProfileFrame.ProfilePage.playerFrame
 
 		for i, object in pairs(ProfileFrame.ProfilePage:GetDescendants()) do
@@ -222,7 +231,7 @@ return function(Client)
 	
 	function ProfileClient:openSummaryPage()
 		local UI = PlayerGui.UI
-		local ProfileFrame = UI.QuestLogFrame.ProfileFrame
+		local ProfileFrame = UI:FindFirstChild("ProfileFrame", true)
 		local Page = ProfileFrame.SummaryPage
 
 		for i, object in pairs(Page:GetDescendants()) do
@@ -250,7 +259,7 @@ return function(Client)
 
 	function ProfileClient:openDreamsPage()
 		local UI = PlayerGui.UI
-		local ProfileFrame = UI.QuestLogFrame.ProfileFrame
+		local ProfileFrame = UI:FindFirstChild("ProfileFrame", true)
 		local Page = ProfileFrame.DreamsPage
 
 		for i, object in pairs(Page:GetDescendants()) do
@@ -278,7 +287,7 @@ return function(Client)
 	
 	function ProfileClient:closePage(Name)
 		local UI = PlayerGui.UI
-		local ProfileFrame = UI.QuestLogFrame.ProfileFrame
+		local ProfileFrame = UI:FindFirstChild("ProfileFrame", true)
 		local Page = ProfileFrame[Name.."Page"]
 		Page.Visible = false
 		--MAKE ALL THE STUFF FOR THE PAGE INVISIBLE SO IT CAN APPEAR SMOOTHLY
