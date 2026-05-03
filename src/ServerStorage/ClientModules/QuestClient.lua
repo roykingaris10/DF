@@ -97,7 +97,7 @@ return function(Client)
 		end
 
 		refs.tracker = root
-		refs.trackerTitle = find("QuestNameLabel", "QuestTitle")
+		refs.trackerTitle = find("QuestTrackerTitle", "QuestNameLabel", "QuestTitle")
 		refs.trackerObjectivesScroll = find("ObjectiveScroll", "ObjectivesScroll", "ObjectiveContainer")
 		refs.trackerRewardsScroll = find("RewardsScroll", "RewardScroll", "RewardsContainer")
 		refs.trackerDivider = find("divider", "Divider")
@@ -402,7 +402,7 @@ return function(Client)
 	end
 
 	function QuestClient:SetTracked(questId)
-		if trackedId == questId then trackedId = nil else trackedId = questId end
+		if trackedId == questId then trackedId = false else trackedId = questId end
 		QuestClient:RefreshTracker()
 		if selectedId then QuestClient:RenderDetails(selectedId) end
 	end
@@ -560,6 +560,11 @@ return function(Client)
 			clearClones(refs.trackerRewardsScroll)
 			if refs.trackerDivider then refs.trackerDivider.Visible = false end
 			if refs.trackerTimer then refs.trackerTimer.Visible = false end
+			return
+		end
+
+		if trackedId == false then
+			setTrackerVisible(false)
 			return
 		end
 
