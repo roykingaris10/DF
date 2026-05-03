@@ -97,11 +97,20 @@ return function(Client)
 		end
 
 		refs.tracker = root
-		refs.trackerTitle = find("Title", "TitleLabel")
+		refs.trackerTitle = find("QuestNameLabel", "QuestTitle")
 		refs.trackerObjectivesScroll = find("ObjectiveScroll", "ObjectivesScroll", "ObjectiveContainer")
 		refs.trackerRewardsScroll = find("RewardsScroll", "RewardScroll", "RewardsContainer")
-		refs.trackerDivider = find("Divider")
+		refs.trackerDivider = find("divider", "Divider")
 		refs.trackerTimer = find("Timer", "TimerLabel")
+
+		refs.trackerRewardsHeader = nil
+		if refs.trackerDivider then
+			refs.trackerRewardsHeader = refs.trackerDivider:FindFirstChild("Title", true)
+				or refs.trackerDivider:FindFirstChild("TitleLabel", true)
+		end
+		if refs.trackerRewardsHeader and refs.trackerRewardsHeader:IsA("TextLabel") then
+			refs.trackerRewardsHeader.Text = "⭐ Rewards"
+		end
 
 		setTrackerVisible(false)
 		return true
@@ -111,6 +120,25 @@ return function(Client)
 		local kits = ReplicatedStorage:FindFirstChild("Kits")
 		local ui = kits and kits:FindFirstChild("UI")
 		return ui and ui:FindFirstChild(name) or nil
+	end
+
+	local function getRewardFrameTemplate(rewardType)
+		local kits = ReplicatedStorage:FindFirstChild("Kits")
+		local ui = kits and kits:FindFirstChild("UI")
+		local folder = ui and ui:FindFirstChild("rewardsFolder")
+		if not folder then return nil end
+
+		local map = {
+			XP = "expFrame",
+			Beli = "beliFrame",
+			Item = "itemFrame",
+			Bounty = "bountyFrame",
+			Reputation = "repFrame",
+			Title = "titleFrame",
+			Skill = "skillFrame",
+		}
+		local frameName = map[rewardType]
+		return frameName and folder:FindFirstChild(frameName) or nil
 	end
 
 	local function ensureLog(playerGui)
@@ -403,11 +431,21 @@ return function(Client)
 	local DONE_PREFIX = '<font color="#7FCC8F">✓</font>'
 	local ACTIVE_PREFIX = '<font color="#7FCC8F"><b>◇</b></font>'
 	local PENDING_PREFIX = '<font color="rgb(150,150,165)">·</font>'
-	local REWARD_PREFIX = '🔹'
 
 	local DONE_COLOR = "rgb(140,140,150)"
 	local ACTIVE_COLOR = "#7FCC8F"
 	local PENDING_COLOR = "rgb(190,190,200)"
+
+	local RARITY_COLORS = {
+		Common = Color3.fromRGB(225, 225, 235),
+		Rare = Color3.fromRGB(95, 175, 255),
+		Legendary = Color3.fromRGB(255, 200, 80),
+		Cursed = Color3.fromRGB(180, 100, 255),
+	}
+
+	local function rarityColor(rarity)
+		return RARITY_COLORS[rarity] or RARITY_COLORS.Common
+	end
 
 	local function spawnLine(container, template, text, order)
 		if not container or not template then return end
@@ -479,42 +517,31 @@ return function(Client)
 		end
 	end
 
-	local REWARD_COLORS = {
-		XP = "#7FCC8F",          -- green
-		Beli = "#FFD45A",        -- yellow
-		Item = "#5BB8FF",        -- blue
-		Bounty = "#E66060",      -- red
-		Reputation = "#C49BFF",  -- purple
-		Title = "#FFAA66",       -- orange
-		Skill = "#5BE5E5",       -- cyan
-		Custom = "rgb(200,200,210)",
-	}
-
-	local function rewardColor(reward)
-		return REWARD_COLORS[reward.Type] or REWARD_COLORS.Custom
-	end
-
 	local function fillRewards(quest)
 		local container = refs.trackerRewardsScroll
 		if not container then return false end
-		local template = getKitTemplate("RewardsText")
-		if not template then return false end
 
 		clearClones(container)
 
 		local order = 0
 		local any = false
 		for _, reward in ipairs(quest.Rewards or {}) do
-			order += 1
-			any = true
-			local color = rewardColor(reward)
-			local text = string.format(
-				'%s <font color="%s">%s</font>',
-				REWARD_PREFIX,
-				color,
-				string.upper(rewardLine(reward))
-			)
-			spawnLine(container, template, text, order)
+			local template = getRewardFrameTemplate(reward.Type)
+			if template then
+				order += 1
+				any = true
+				local clone = template:Clone()
+				clone:SetAttribute(CLONE_TAG, true)
+				clone.LayoutOrder = order
+				clone.Visible = true
+
+				local img = clone:FindFirstChild("ImageLabel", true)
+				if img and img:IsA("ImageLabel") then
+					img.ImageColor3 = rarityColor(reward.Rarity)
+				end
+
+				clone.Parent = container
+			end
 		end
 		return any
 	end
