@@ -702,7 +702,7 @@ return function(Client)
 		sfx.Name = "RegionEnterSFX"
 		sfx.SoundId = config.EnterSFX
 		sfx.Volume = 0.5
-		sfx.Parent = SoundService
+		sfx.Parent = script
 		sfx:Play()
 		sfx.Ended:Connect(function()
 			sfx:Destroy()
@@ -744,7 +744,7 @@ return function(Client)
 		if not chatterFolder then
 			chatterFolder = Instance.new("Folder")
 			chatterFolder.Name = "RegionChatter"
-			chatterFolder.Parent = SoundService
+			chatterFolder.Parent = script
 		end
 
 		local startedRegion = RegionController.currentRegion

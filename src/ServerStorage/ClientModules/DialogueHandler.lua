@@ -31,7 +31,7 @@ return function(Client)
 	lineSound.SoundId = "rbxassetid://9114393683"
 	lineSound.Volume = 0.35
 	lineSound.PlaybackSpeed = 1
-	lineSound.Parent = SoundService
+	lineSound.Parent = script
 
 	local function playLineSound()
 		lineSound.PlaybackSpeed = 0.95 + math.random() * 0.1

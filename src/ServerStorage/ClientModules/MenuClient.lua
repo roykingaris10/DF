@@ -61,13 +61,13 @@ return function(Client)
 	hoverSound.Name = "MenuSFX_Hover"
 	hoverSound.SoundId = "rbxassetid://103866342467024"
 	hoverSound.Volume = 0.3
-	hoverSound.Parent = SoundService
+	hoverSound.Parent = script
 
 	local clickSound = Instance.new("Sound")
 	clickSound.Name = "MenuSFX_Click"
 	clickSound.SoundId = "rbxassetid://10128766965"
 	clickSound.Volume = 0.5
-	clickSound.Parent = SoundService
+	clickSound.Parent = script
 
 	ContentProvider:PreloadAsync({hoverSound, clickSound})
 
@@ -457,7 +457,7 @@ return function(Client)
 	openSound.Name = "MenuSFX_ScreenOpen"
 	openSound.SoundId = "rbxassetid://10128766965"
 	openSound.Volume = 0.45
-	openSound.Parent = SoundService
+	openSound.Parent = script
 
 	local function playOpenSound()
 		openSound:Stop()
