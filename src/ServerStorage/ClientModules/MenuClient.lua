@@ -626,8 +626,6 @@ return function(Client)
 		elseif holderName == "invHolder" then
 			task.delay(0.22, function() openScreen("inventory") end)
 		end
-
-		print("[Menu] Clicked:", holderName)
 	end
 
 	local function setupHoverEffects()
