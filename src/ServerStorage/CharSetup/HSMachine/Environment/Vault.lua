@@ -33,16 +33,20 @@ return function(Client)
 		SoundVolume = 0.5,
 	}
 
-	local vaultSound
-	if CFG.SoundId and CFG.SoundId ~= "rbxassetid://0" then
-		vaultSound = Instance.new("Sound")
+	local function playVaultSound(hrp)
+		if not hrp then return end
+		if not CFG.SoundId or CFG.SoundId == "" or CFG.SoundId == "rbxassetid://0" then return end
+
+		local existing = hrp:FindFirstChild("VaultSound")
+		if existing then existing:Destroy() end
+
+		local vaultSound = Instance.new("Sound")
 		vaultSound.Name = "VaultSound"
 		vaultSound.SoundId = CFG.SoundId
 		vaultSound.Volume = CFG.SoundVolume
-		vaultSound.Parent = SoundService
-		task.spawn(function()
-			pcall(function() ContentProvider:PreloadAsync({vaultSound}) end)
-		end)
+		vaultSound.Parent = hrp
+		vaultSound:Play()
+		Debris:AddItem(vaultSound, 5)
 	end
 
 	local BLOCKING = {"CurrentlyAttacking", "Dashing", "Blocking", "Sliding", "Stunned", "Aerial"}
@@ -214,10 +218,7 @@ return function(Client)
 		local existing = hrp:FindFirstChild("DashVelocity")
 		if existing then existing:Destroy() end
 
-		if vaultSound then
-			vaultSound.TimePosition = 0
-			vaultSound:Play()
-		end
+		playVaultSound(hrp)
 
 		local vaultVel = Instance.new("BodyVelocity")
 		vaultVel.Name = "VaultVelocity"

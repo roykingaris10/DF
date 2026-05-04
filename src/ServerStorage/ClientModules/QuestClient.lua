@@ -14,6 +14,7 @@ return function(Client)
 	local refs = {}
 
 	local completeSound = Instance.new("Sound")
+	completeSound.Name = "QuestSFX_Complete"
 	completeSound.SoundId = "rbxassetid://118754898939434"
 	completeSound.Volume = 0.6
 	completeSound.Parent = SoundService

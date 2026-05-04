@@ -30,11 +30,13 @@ return function(Client)
 	--═══════════════════════════════════════════════════════════════════════════
 
 	local toggleSound = Instance.new("Sound")
+	toggleSound.Name = "SettingsSFX_Toggle"
 	toggleSound.SoundId = "rbxassetid://103866342467024"
 	toggleSound.Volume = 0.3
 	toggleSound.Parent = SoundService
 
 	local hoverSound = Instance.new("Sound")
+	hoverSound.Name = "SettingsSFX_Hover"
 	hoverSound.SoundId = "rbxassetid://108775056064359"
 	hoverSound.Volume = 0.2
 	hoverSound.Parent = SoundService

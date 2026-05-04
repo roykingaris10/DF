@@ -58,11 +58,13 @@ return function(Client)
 	end
 
 	local hoverSound = Instance.new("Sound")
+	hoverSound.Name = "MenuSFX_Hover"
 	hoverSound.SoundId = "rbxassetid://103866342467024"
 	hoverSound.Volume = 0.3
 	hoverSound.Parent = SoundService
 
 	local clickSound = Instance.new("Sound")
+	clickSound.Name = "MenuSFX_Click"
 	clickSound.SoundId = "rbxassetid://10128766965"
 	clickSound.Volume = 0.5
 	clickSound.Parent = SoundService
@@ -452,6 +454,7 @@ return function(Client)
 	end
 
 	local openSound = Instance.new("Sound")
+	openSound.Name = "MenuSFX_ScreenOpen"
 	openSound.SoundId = "rbxassetid://10128766965"
 	openSound.Volume = 0.45
 	openSound.Parent = SoundService

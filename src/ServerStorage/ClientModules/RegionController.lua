@@ -692,11 +692,14 @@ return function(Client)
 		end)
 	end
 
+	local Debris = game:GetService("Debris")
+
 	local function playEnterSFX(config)
 		if not config or not config.EnterSFX then return end
 		if config.EnterSFX == "rbxassetid://" or config.EnterSFX == "" then return end
 
 		local sfx = Instance.new("Sound")
+		sfx.Name = "RegionEnterSFX"
 		sfx.SoundId = config.EnterSFX
 		sfx.Volume = 0.5
 		sfx.Parent = SoundService
@@ -704,6 +707,7 @@ return function(Client)
 		sfx.Ended:Connect(function()
 			sfx:Destroy()
 		end)
+		Debris:AddItem(sfx, 15)
 	end
 
 	-- Chatter stays here (ambient SFX, not music)
@@ -743,13 +747,16 @@ return function(Client)
 			chatterFolder.Parent = SoundService
 		end
 
+		local startedRegion = RegionController.currentRegion
+
 		RegionController.chatterConnection = task.spawn(function()
-			while RegionController.currentRegion do
+			while RegionController.currentRegion == startedRegion do
 				task.wait(math.random(3, 8))
-				if not RegionController.currentRegion then break end
+				if RegionController.currentRegion ~= startedRegion then break end
 
 				local randomSound = validSounds[math.random(1, #validSounds)]
 				local chatter = Instance.new("Sound")
+				chatter.Name = "RegionChatterSound"
 				chatter.SoundId = randomSound
 				chatter.Volume = math.random(20, 40) / 100
 				chatter.Parent = chatterFolder
@@ -757,6 +764,7 @@ return function(Client)
 				chatter.Ended:Connect(function()
 					chatter:Destroy()
 				end)
+				Debris:AddItem(chatter, 30)
 			end
 		end)
 	end

@@ -27,6 +27,7 @@ return function(Client)
 	end
 
 	local lineSound = Instance.new("Sound")
+	lineSound.Name = "DialogueSFX_Line"
 	lineSound.SoundId = "rbxassetid://9114393683"
 	lineSound.Volume = 0.35
 	lineSound.PlaybackSpeed = 1

@@ -30,18 +30,22 @@ return function(Client)
 		hover = Instance.new("Sound"),
 	}
 
+	Sounds.open.Name = "TopbarSFX_Open"
 	Sounds.open.SoundId = "rbxassetid://10128766965"
 	Sounds.open.Volume = 0.4
 	Sounds.open.Parent = SoundService
 
+	Sounds.close.Name = "TopbarSFX_Close"
 	Sounds.close.SoundId = "rbxassetid://105426467647022"
 	Sounds.close.Volume = 0.4
 	Sounds.close.Parent = SoundService
 
+	Sounds.click.Name = "TopbarSFX_Click"
 	Sounds.click.SoundId = "rbxassetid://103866342467024"
 	Sounds.click.Volume = 0.3
 	Sounds.click.Parent = SoundService
 
+	Sounds.hover.Name = "TopbarSFX_Hover"
 	Sounds.hover.SoundId = "rbxassetid://108775056064359"
 	Sounds.hover.Volume = 0.2
 	Sounds.hover.Parent = SoundService

@@ -56,18 +56,22 @@ return function(Client)
 		hover = Instance.new("Sound"),
 	}
 
+	Sounds.notification.Name = "NotificationSFX_Toast"
 	Sounds.notification.SoundId = "rbxassetid://83219280251618"
 	Sounds.notification.Volume = 0.5
 	Sounds.notification.Parent = SoundService
 
+	Sounds.click.Name = "NotificationSFX_Click"
 	Sounds.click.SoundId = "rbxassetid://103866342467024"
 	Sounds.click.Volume = 0.3
 	Sounds.click.Parent = SoundService
 
+	Sounds.open.Name = "NotificationSFX_Open"
 	Sounds.open.SoundId = "rbxassetid://10128766965"
 	Sounds.open.Volume = 0.4
 	Sounds.open.Parent = SoundService
 
+	Sounds.hover.Name = "NotificationSFX_Hover"
 	Sounds.hover.SoundId = "rbxassetid://14566136152"
 	Sounds.hover.Volume = 0.15
 	Sounds.hover.Parent = SoundService
