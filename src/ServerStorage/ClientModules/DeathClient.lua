@@ -719,7 +719,6 @@ return function(Client)
 			end
 			state.setupConnections.charAdded = player.CharacterAdded:Connect(setupCharacter)
 
-			print("[DeathClient] Initialized — DeathScreen found and listeners active")
 			return true
 		end
 

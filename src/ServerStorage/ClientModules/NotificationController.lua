@@ -892,8 +892,6 @@ return function(Client)
 		end))
 
 		updateBadge()
-
-		print("[NotificationController] Initialized")
 	end
 
 	function NotificationController:Cleanup()

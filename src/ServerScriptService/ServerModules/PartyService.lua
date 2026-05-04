@@ -399,8 +399,6 @@ task.spawn(function()
 	Server.Network:bindFunction("PartyGetState", function(player)
 		return PartyService.GetPartyState(player)
 	end)
-
-	print("[PartyService] Network bindings complete")
 end)
 
 -- Handle player leaving
@@ -415,7 +413,5 @@ Players.PlayerRemoving:Connect(function(player)
 
 	removeFromParty(player, true)
 end)
-
-print("[PartyService] Initialized")
 
 return PartyService

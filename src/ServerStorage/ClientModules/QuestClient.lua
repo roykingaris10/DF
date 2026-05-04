@@ -816,8 +816,6 @@ return function(Client)
 				QuestClient:RefreshTracker()
 			end
 		end)
-
-		print("[QuestClient] Initialized — press J to toggle Quest Log")
 	end
 
 	return QuestClient

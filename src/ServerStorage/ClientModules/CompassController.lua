@@ -483,8 +483,6 @@ return function(Client)
 		heartbeatConn = RunService.Heartbeat:Connect(mainLoop)
 		
 		openCompass()
-
-		print("[CompassController] Initialized")
 	end
 
 	function CompassController:Cleanup()

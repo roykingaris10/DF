@@ -855,8 +855,6 @@ return function(Client)
 			updatePartyUI()
 			PartyClient:ShowNotification("Party has been disbanded", false)
 		end)
-
-		print("[PartyClient] Network events bound")
 	end
 
 	function PartyClient:StartMarkerUpdate()
@@ -960,8 +958,6 @@ return function(Client)
 				healthConnections[leavingPlayer.UserId] = nil
 			end
 		end)
-
-		print("[PartyClient] Initialized")
 	end
 
 	function PartyClient:Cleanup()

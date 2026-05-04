@@ -236,7 +236,6 @@ return function(Client)
 
 		if success then
 			LowGFXService = result
-			print("[SettingsController] LowGFXService loaded")
 		else
 			warn("[SettingsController] Failed to load LowGFXService:", result)
 		end
@@ -248,8 +247,6 @@ return function(Client)
 
 		setupToggleButtons()
 		loadSavedSettings()
-
-		print("[SettingsController] Initialized")
 	end
 
 	function SettingsController:SetLowGFX(enabled)

@@ -80,8 +80,6 @@ return function(Client)
 		local maid = {}
 		local currentMatch = nil
 
-		print("[CrewClient] CrewInfo initialized")
-
 		local function findMatch(text)
 			if text == "" then return nil end
 

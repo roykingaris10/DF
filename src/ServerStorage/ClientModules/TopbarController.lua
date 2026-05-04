@@ -394,8 +394,6 @@ return function(Client)
 		for btnName, button in pairs(Buttons) do
 			setupButtonEffects(btnName, button)
 		end
-
-		print("[TopBarController] Initialized")
 	end
 
 	function TopbarController:Open(panelName)

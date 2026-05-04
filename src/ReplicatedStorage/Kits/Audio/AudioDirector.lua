@@ -417,8 +417,6 @@ function AudioDirector:Init()
 	setupFolders()
 
 	State.updateConnection = RunService.Heartbeat:Connect(update)
-
-	print("[AudioDirector] Initialized")
 end
 
 function AudioDirector:Cleanup()
