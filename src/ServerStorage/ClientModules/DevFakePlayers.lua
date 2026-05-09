@@ -9,6 +9,17 @@ return function(Client)
 	local player = Client.player
 	local PlayerGui = player:WaitForChild("PlayerGui")
 
+	local DEV_USER_IDS = {
+		[22985938] = true,
+		[146140097] = true,
+		[1122722591] = true,
+	}
+
+	local function isDev()
+		if RunService:IsStudio() then return true end
+		return DEV_USER_IDS[player.UserId] == true
+	end
+
 	local ListTab = ReplicatedStorage:WaitForChild("Kits"):WaitForChild("UI"):WaitForChild("ListTab")
 
 	local FAKE_TAG = "DevFakeListTab"
@@ -184,45 +195,59 @@ return function(Client)
 		PlayerListClient:UpdateSection(section, SECTION_NAME[faction] or faction:upper(), countListEntries(list))
 	end
 
-	local function spawnFake(faction, firstName, lastName, layoutOrder)
-		local section, list = getSection(faction)
-		if not section or not list then
-			warn("[DevFakePlayers] Section not found for", faction)
-			return
-		end
+	local cachedRoster = nil
 
-		local tab = ListTab:Clone()
-		tab:SetAttribute(FAKE_TAG, true)
-		tab.Visible = true
-		tab.LayoutOrder = layoutOrder
-
-		local nameLabel = tab:FindFirstChild("playerNameRank") or tab:FindFirstChild("NameLabel")
-		if nameLabel then
-			nameLabel.Name = "NameLabel"
-			nameLabel.Text = (firstName .. " " .. lastName):upper()
-		end
-
-		local crewLabel = tab:FindFirstChild("playerCrew") or tab:FindFirstChild("CrewLabel")
-		if crewLabel then
-			crewLabel.Name = "CrewLabel"
-			crewLabel.BackgroundTransparency = 1
-			crewLabel.Text = (pickCrew(faction)):upper()
-		end
-
-		tab.Parent = list
-	end
-
-	local function populate()
-		clearFakes()
-
+	local function buildRoster()
+		local roster = {}
 		local used = {}
 		for faction, count in pairs(FACTION_PLAN) do
+			roster[faction] = {}
+			for _ = 1, count do
+				local first, last = pickName(used)
+				table.insert(roster[faction], {
+					first = first,
+					last = last,
+					crew = pickCrew(faction),
+				})
+			end
+		end
+		return roster
+	end
+
+	local function populate(reroll)
+		clearFakes()
+
+		if reroll or not cachedRoster then
+			cachedRoster = buildRoster()
+		end
+
+		for faction, entries in pairs(cachedRoster) do
 			local section, list = getSection(faction)
 			if section and list then
 				local startOrder = countListEntries(list) + 1
-				for i = 1, count do
-					local first, last = pickName(used)
-					spawnFake(faction, first, last, startOrder + i - 1)
+				for i, entry in ipairs(entries) do
+					local section2, list2 = getSection(faction)
+					if section2 and list2 then
+						local tab = ListTab:Clone()
+						tab:SetAttribute(FAKE_TAG, true)
+						tab.Visible = true
+						tab.LayoutOrder = startOrder + i - 1
+
+						local nameLabel = tab:FindFirstChild("playerNameRank") or tab:FindFirstChild("NameLabel")
+						if nameLabel then
+							nameLabel.Name = "NameLabel"
+							nameLabel.Text = (entry.first .. " " .. entry.last):upper()
+						end
+
+						local crewLabel = tab:FindFirstChild("playerCrew") or tab:FindFirstChild("CrewLabel")
+						if crewLabel then
+							crewLabel.Name = "CrewLabel"
+							crewLabel.BackgroundTransparency = 1
+							crewLabel.Text = entry.crew:upper()
+						end
+
+						tab.Parent = list2
+					end
 				end
 				refreshSectionSize(faction)
 			end
@@ -244,7 +269,7 @@ return function(Client)
 	end
 
 	function DevFakePlayers:Init()
-		if not RunService:IsStudio() then return end
+		if not isDev() then return end
 
 		hookRefresh()
 
@@ -256,8 +281,9 @@ return function(Client)
 		UserInputService.InputBegan:Connect(function(input, gp)
 			if gp then return end
 			if input.KeyCode == Enum.KeyCode.F9 then
-				populate()
+				populate(true)
 			elseif input.KeyCode == Enum.KeyCode.F10 then
+				cachedRoster = nil
 				clearFakes()
 			end
 		end)
