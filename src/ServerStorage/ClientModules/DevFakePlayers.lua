@@ -21,6 +21,7 @@ return function(Client)
 	end
 
 	local ListTab = ReplicatedStorage:WaitForChild("Kits"):WaitForChild("UI"):WaitForChild("ListTab")
+	local PartyInfoTemplate = ReplicatedStorage:WaitForChild("Kits"):WaitForChild("UI"):FindFirstChild("partyInfo")
 
 	local FAKE_TAG = "DevFakeListTab"
 
@@ -268,6 +269,154 @@ return function(Client)
 		end
 	end
 
+	local PARTY_FAKE_TAG = "DevFakePartyTab"
+	local PARTY_PLAN_SIZE = 5
+
+	local PARTY_NAMES = {
+		{ "Roronoa", "Zoro", 42 },
+		{ "Nico", "Robin", 38 },
+		{ "Sanji", "Vinsmoke", 41 },
+		{ "Tony", "Chopper", 26 },
+		{ "Usopp", "Sogeking", 33 },
+		{ "Franky", "Cutty", 47 },
+		{ "Brook", "Soul", 55 },
+		{ "Jinbe", "Knight", 60 },
+		{ "Trafalgar", "Law", 50 },
+		{ "Eustass", "Kid", 49 },
+	}
+
+	local PARTY_COLORS = {
+		Color3.fromRGB(220, 100, 100),
+		Color3.fromRGB(100, 180, 255),
+		Color3.fromRGB(120, 220, 140),
+		Color3.fromRGB(255, 200, 80),
+		Color3.fromRGB(190, 130, 255),
+		Color3.fromRGB(255, 150, 200),
+	}
+
+	local cachedPartyRoster = nil
+
+	local function buildPartyRoster()
+		local roster = {}
+		local used = {}
+		for i = 1, PARTY_PLAN_SIZE do
+			local pickIdx
+			repeat
+				pickIdx = math.random(1, #PARTY_NAMES)
+			until not used[pickIdx]
+			used[pickIdx] = true
+
+			local entry = PARTY_NAMES[pickIdx]
+			table.insert(roster, {
+				first = entry[1],
+				last = entry[2],
+				level = entry[3] + math.random(-3, 5),
+				color = PARTY_COLORS[((i - 1) % #PARTY_COLORS) + 1],
+				isLeader = i == 1,
+			})
+		end
+		return roster
+	end
+
+	local function getPartyFrame()
+		local HUD = PlayerGui:FindFirstChild("HUD")
+		local PartyHolder = HUD and HUD:FindFirstChild("PartyHolder")
+		if not PartyHolder then return nil end
+		local partyFrame = PartyHolder:FindFirstChild("partyFrame")
+		return partyFrame, PartyHolder
+	end
+
+	local function clearPartyFakes()
+		local partyFrame = getPartyFrame()
+		if not partyFrame then return end
+		for _, child in ipairs(partyFrame:GetChildren()) do
+			if child:GetAttribute(PARTY_FAKE_TAG) then
+				child:Destroy()
+			end
+		end
+	end
+
+	local function spawnPartyFake(entry, index)
+		if not PartyInfoTemplate then
+			warn("[DevFakePlayers] partyInfo template missing in Kits.UI")
+			return
+		end
+
+		local partyFrame, PartyHolder = getPartyFrame()
+		if not partyFrame or not PartyHolder then
+			warn("[DevFakePlayers] PartyHolder.partyFrame not found")
+			return
+		end
+
+		PartyHolder.Visible = true
+		partyFrame.Visible = true
+
+		local newFrame = PartyInfoTemplate:Clone()
+		newFrame:SetAttribute(PARTY_FAKE_TAG, true)
+		newFrame.Name = "partyInfo_fake_" .. index
+		newFrame.LayoutOrder = index
+		newFrame.Visible = true
+
+		local colour = newFrame:FindFirstChild("colour")
+		if colour and colour:IsA("ImageLabel") then
+			colour.ImageColor3 = entry.color
+		end
+
+		local info = newFrame:FindFirstChild("info")
+		if info then
+			local playerFolder = info:FindFirstChild("player")
+			if playerFolder then
+				local playerName = playerFolder:FindFirstChild("playerName")
+				local playerLevel = playerFolder:FindFirstChild("playerLevel")
+
+				if playerName then
+					local display = entry.first .. " " .. entry.last
+					if entry.isLeader then display = "★ " .. display end
+					playerName.Text = display:upper()
+				end
+				if playerLevel then
+					playerLevel.Text = "Lv. " .. tostring(entry.level)
+				end
+			end
+		end
+
+		local inner = newFrame:FindFirstChild("inner")
+		if inner then
+			local playerView = inner:FindFirstChild("playerView")
+			if playerView and playerView:IsA("ViewportFrame") and player.Character then
+				local cameraSlot = playerView:FindFirstChildOfClass("Camera")
+				if not cameraSlot then
+					cameraSlot = Instance.new("Camera")
+					cameraSlot.Parent = playerView
+				end
+				playerView.CurrentCamera = cameraSlot
+
+				for _, c in ipairs(playerView:GetChildren()) do
+					if c:IsA("Model") then c:Destroy() end
+				end
+
+				local clone = player.Character:Clone()
+				clone.Parent = playerView
+				local head = clone:FindFirstChild("Head")
+				if head and head:IsA("BasePart") then
+					cameraSlot.CFrame = CFrame.new(head.Position + head.CFrame.LookVector * 3, head.Position)
+				end
+			end
+		end
+
+		newFrame.Parent = partyFrame
+	end
+
+	local function populateParty(reroll)
+		clearPartyFakes()
+		if reroll or not cachedPartyRoster then
+			cachedPartyRoster = buildPartyRoster()
+		end
+		for i, entry in ipairs(cachedPartyRoster) do
+			spawnPartyFake(entry, i)
+		end
+	end
+
 	function DevFakePlayers:Init()
 		if not isDev() then return end
 
@@ -276,6 +425,7 @@ return function(Client)
 		task.spawn(function()
 			task.wait(3)
 			populate()
+			populateParty()
 		end)
 
 		UserInputService.InputBegan:Connect(function(input, gp)
@@ -285,6 +435,11 @@ return function(Client)
 			elseif input.KeyCode == Enum.KeyCode.F10 then
 				cachedRoster = nil
 				clearFakes()
+			elseif input.KeyCode == Enum.KeyCode.F7 then
+				populateParty(true)
+			elseif input.KeyCode == Enum.KeyCode.F8 then
+				cachedPartyRoster = nil
+				clearPartyFakes()
 			end
 		end)
 	end
