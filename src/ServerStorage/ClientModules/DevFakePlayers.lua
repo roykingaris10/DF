@@ -108,39 +108,83 @@ return function(Client)
 		local PlayerListFrame = UI and UI:FindFirstChild("PlayerListFrame")
 		if not PlayerListFrame then return end
 
+		local touched = {}
 		for _, section in ipairs(PlayerListFrame:GetChildren()) do
 			local list = section:FindFirstChild("PlayerList")
 			if list then
 				for _, child in ipairs(list:GetChildren()) do
 					if child:GetAttribute(FAKE_TAG) then
 						child:Destroy()
+						touched[section.Name] = true
 					end
 				end
 			end
 		end
-	end
 
-	local function bumpSectionSize(section, faction, fakeCount)
-		local countFrame = section:FindFirstChild("CountFrame")
-		local countLabel = countFrame and countFrame:FindFirstChild("CountLabel")
-		if countLabel then
-			local current = countLabel.Text:match("%((%d+)%)") or "0"
-			local realCount = tonumber(current) or 0
-			local total = realCount + fakeCount
-
-			local sectionName = ({
-				Pirate = "PIRATES",
-				Marine = "MARINES",
-				Revolutionary = "REBELS",
-				Civilian = "CIVILIANS",
-			})[faction] or faction:upper()
-
-			countLabel.Text = sectionName .. " (" .. total .. ")"
+		local nameToFaction = {
+			PirateSection = "Pirate",
+			MarineSection = "Marine",
+			RevSection = "Revolutionary",
+			CivilianSection = "Civilian",
+		}
+		for sectionName in pairs(touched) do
+			local faction = nameToFaction[sectionName]
+			if faction then
+				task.defer(function()
+					if Client.PlayerList and Client.PlayerList.UpdateSection then
+						local section, list = getSection(faction)
+						if section and list then
+							local count = 0
+							for _, c in ipairs(list:GetChildren()) do
+								if not c:IsA("UIListLayout") and not c:IsA("UIPadding") then
+									count += 1
+								end
+							end
+							Client.PlayerList:UpdateSection(section, ({
+								Pirate = "PIRATES",
+								Marine = "MARINES",
+								Revolutionary = "REBELS",
+								Civilian = "CIVILIANS",
+							})[faction], count)
+						end
+					end
+				end)
+			end
 		end
-		section.Visible = true
 	end
 
-	local function spawnFake(faction, firstName, lastName)
+	local SECTION_NAME = {
+		Pirate = "PIRATES",
+		Marine = "MARINES",
+		Revolutionary = "REBELS",
+		Civilian = "CIVILIANS",
+	}
+
+	local function countListEntries(list)
+		local count = 0
+		for _, child in ipairs(list:GetChildren()) do
+			if not child:IsA("UIListLayout")
+				and not child:IsA("UIPadding")
+				and not child:IsA("UIGridLayout")
+				and not child:IsA("UICorner")
+				and not child:IsA("UIStroke") then
+				count += 1
+			end
+		end
+		return count
+	end
+
+	local function refreshSectionSize(faction)
+		local PlayerListClient = Client.PlayerList
+		if not PlayerListClient or not PlayerListClient.UpdateSection then return end
+
+		local section, list = getSection(faction)
+		if not section or not list then return end
+
+		PlayerListClient:UpdateSection(section, SECTION_NAME[faction] or faction:upper(), countListEntries(list))
+	end
+
+	local function spawnFake(faction, firstName, lastName, layoutOrder)
 		local section, list = getSection(faction)
 		if not section or not list then
 			warn("[DevFakePlayers] Section not found for", faction)
@@ -149,15 +193,16 @@ return function(Client)
 
 		local tab = ListTab:Clone()
 		tab:SetAttribute(FAKE_TAG, true)
-		tab.LayoutOrder = math.random(1, 10000)
+		tab.Visible = true
+		tab.LayoutOrder = layoutOrder
 
-		local nameLabel = tab:FindFirstChild("playerNameRank")
+		local nameLabel = tab:FindFirstChild("playerNameRank") or tab:FindFirstChild("NameLabel")
 		if nameLabel then
 			nameLabel.Name = "NameLabel"
 			nameLabel.Text = (firstName .. " " .. lastName):upper()
 		end
 
-		local crewLabel = tab:FindFirstChild("playerCrew")
+		local crewLabel = tab:FindFirstChild("playerCrew") or tab:FindFirstChild("CrewLabel")
 		if crewLabel then
 			crewLabel.Name = "CrewLabel"
 			crewLabel.BackgroundTransparency = 1
@@ -172,13 +217,14 @@ return function(Client)
 
 		local used = {}
 		for faction, count in pairs(FACTION_PLAN) do
-			local section = getSection(faction)
-			if section then
-				for _ = 1, count do
+			local section, list = getSection(faction)
+			if section and list then
+				local startOrder = countListEntries(list) + 1
+				for i = 1, count do
 					local first, last = pickName(used)
-					spawnFake(faction, first, last)
+					spawnFake(faction, first, last, startOrder + i - 1)
 				end
-				bumpSectionSize(section, faction, count)
+				refreshSectionSize(faction)
 			end
 		end
 	end
