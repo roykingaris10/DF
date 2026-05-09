@@ -352,6 +352,10 @@ return function(Client)
 		partyFrame.Visible = true
 
 		local newFrame = PartyInfoTemplate:Clone()
+		if not newFrame then
+			warn("[DevFakePlayers] partyInfo clone returned nil")
+			return
+		end
 		newFrame:SetAttribute(PARTY_FAKE_TAG, true)
 		newFrame.Name = "partyInfo_fake_" .. index
 		newFrame.LayoutOrder = index
@@ -381,9 +385,9 @@ return function(Client)
 		end
 
 		local inner = newFrame:FindFirstChild("inner")
-		if inner then
-			local playerView = inner:FindFirstChild("playerView")
-			if playerView and playerView:IsA("ViewportFrame") and player.Character then
+		local playerView = inner and inner:FindFirstChild("playerView")
+		if playerView and playerView:IsA("ViewportFrame") and player.Character then
+			pcall(function()
 				local cameraSlot = playerView:FindFirstChildOfClass("Camera")
 				if not cameraSlot then
 					cameraSlot = Instance.new("Camera")
@@ -396,15 +400,42 @@ return function(Client)
 				end
 
 				local clone = player.Character:Clone()
-				clone.Parent = playerView
-				local head = clone:FindFirstChild("Head")
-				if head and head:IsA("BasePart") then
-					cameraSlot.CFrame = CFrame.new(head.Position + head.CFrame.LookVector * 3, head.Position)
+				if clone then
+					clone.Parent = playerView
+					local head = clone:FindFirstChild("Head")
+					if head and head:IsA("BasePart") then
+						cameraSlot.CFrame = CFrame.new(head.Position + head.CFrame.LookVector * 3, head.Position)
+					end
 				end
-			end
+			end)
 		end
 
 		newFrame.Parent = partyFrame
+	end
+
+	local partyVisibilityConn = nil
+
+	local function lockPartyHolderVisible()
+		if partyVisibilityConn then return end
+		local _, PartyHolder = getPartyFrame()
+		if not PartyHolder then return end
+
+		partyVisibilityConn = PartyHolder:GetPropertyChangedSignal("Visible"):Connect(function()
+			if cachedPartyRoster and not PartyHolder.Visible then
+				task.defer(function()
+					if cachedPartyRoster then
+						PartyHolder.Visible = true
+					end
+				end)
+			end
+		end)
+	end
+
+	local function unlockPartyHolderVisible()
+		if partyVisibilityConn then
+			partyVisibilityConn:Disconnect()
+			partyVisibilityConn = nil
+		end
 	end
 
 	local function populateParty(reroll)
@@ -412,6 +443,7 @@ return function(Client)
 		if reroll or not cachedPartyRoster then
 			cachedPartyRoster = buildPartyRoster()
 		end
+		lockPartyHolderVisible()
 		for i, entry in ipairs(cachedPartyRoster) do
 			spawnPartyFake(entry, i)
 		end
@@ -439,7 +471,10 @@ return function(Client)
 				populateParty(true)
 			elseif input.KeyCode == Enum.KeyCode.F8 then
 				cachedPartyRoster = nil
+				unlockPartyHolderVisible()
 				clearPartyFakes()
+				local _, PartyHolder = getPartyFrame()
+				if PartyHolder then PartyHolder.Visible = false end
 			end
 		end)
 	end
