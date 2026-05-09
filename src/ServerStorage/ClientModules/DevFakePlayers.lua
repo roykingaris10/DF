@@ -183,8 +183,24 @@ return function(Client)
 		end
 	end
 
+	local function hookRefresh()
+		local PlayerListClient = Client.PlayerList
+		if not PlayerListClient or not PlayerListClient.RefreshPlayerList then return end
+		if PlayerListClient._devFakePatched then return end
+		PlayerListClient._devFakePatched = true
+
+		local original = PlayerListClient.RefreshPlayerList
+		PlayerListClient.RefreshPlayerList = function(self, ...)
+			local result = original(self, ...)
+			task.defer(populate)
+			return result
+		end
+	end
+
 	function DevFakePlayers:Init()
 		if not RunService:IsStudio() then return end
+
+		hookRefresh()
 
 		task.spawn(function()
 			task.wait(3)
