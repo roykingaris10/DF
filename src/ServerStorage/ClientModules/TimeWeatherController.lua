@@ -173,6 +173,7 @@ return function(Client)
 		if TimeController.colorCorrection then
 			TimeController.colorCorrection.Saturation = getInterpolatedValue(ccConfig, time, "Saturation")
 			TimeController.colorCorrection.Contrast = getInterpolatedValue(ccConfig, time, "Contrast")
+			TimeController.colorCorrection.Brightness = getInterpolatedValue(ccConfig, time, "Brightness") or 0
 			TimeController.colorCorrection.TintColor = getInterpolatedValue(ccConfig, time, "TintColor")
 		end
 
