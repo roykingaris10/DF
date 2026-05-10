@@ -710,78 +710,16 @@ return function(Client)
 		Debris:AddItem(sfx, 15)
 	end
 
-	-- Chatter stays here (ambient SFX, not music)
-	local function stopChatter()
-		if RegionController.chatterConnection then
-			pcall(function() task.cancel(RegionController.chatterConnection) end)
-			RegionController.chatterConnection = nil
-		end
-
-		local chatterFolder = SoundService:FindFirstChild("RegionChatter")
-		if chatterFolder then
-			for _, sound in pairs(chatterFolder:GetChildren()) do
-				sound:Destroy()
-			end
-		end
-	end
-
-	local function startChatter(config)
-		stopChatter()
-
-		if not config or not config.Chatter or not config.ChatterSounds or #config.ChatterSounds == 0 then
-			return
-		end
-
-		local validSounds = {}
-		for _, soundId in pairs(config.ChatterSounds) do
-			if soundId and soundId ~= "" and soundId ~= "rbxassetid://" then
-				table.insert(validSounds, soundId)
-			end
-		end
-		if #validSounds == 0 then return end
-
-		local chatterFolder = SoundService:FindFirstChild("RegionChatter")
-		if not chatterFolder then
-			chatterFolder = Instance.new("Folder")
-			chatterFolder.Name = "RegionChatter"
-			chatterFolder.Parent = script
-		end
-
-		local startedRegion = RegionController.currentRegion
-
-		RegionController.chatterConnection = task.spawn(function()
-			while RegionController.currentRegion == startedRegion do
-				task.wait(math.random(3, 8))
-				if RegionController.currentRegion ~= startedRegion then break end
-
-				local randomSound = validSounds[math.random(1, #validSounds)]
-				local chatter = Instance.new("Sound")
-				chatter.Name = "RegionChatterSound"
-				chatter.SoundId = randomSound
-				chatter.Volume = math.random(20, 40) / 100
-				chatter.Parent = chatterFolder
-				chatter:Play()
-				chatter.Ended:Connect(function()
-					chatter:Destroy()
-				end)
-				Debris:AddItem(chatter, 30)
-			end
-		end)
-	end
-
 	local function onRegionEnter(regionName, regionType, config)
 		RegionController.currentRegion = regionName
 		RegionController.currentRegionType = regionType
 		RegionController.currentConfig = config
 
-		-- UI & SFX
 		playEnterSFX(config)
 		showEnterUI(regionName, regionType, config)
-		startChatter(config)
 
-		-- MUSIC: Tell AudioDirector about the new region
 		local timeState = player:GetAttribute("TimeState") or "Day"
-		AudioDirector:SetRegion(config, timeState)
+		AudioDirector:SetRegion(config, timeState, regionName)
 
 		if config.ClimateZone then
 			player:SetAttribute("ClimateZone", config.ClimateZone)
@@ -794,9 +732,6 @@ return function(Client)
 		RegionController.currentConfig = nil
 
 		showLeaveUI(oldRegionName, oldConfig)
-		stopChatter()
-
-		-- MUSIC: Clear region from AudioDirector
 		AudioDirector:ClearRegion()
 
 		player:SetAttribute("ClimateZone", nil)
@@ -881,7 +816,6 @@ return function(Client)
 		RegionController.enterUIVisible = false
 		RegionController.leaveUIVisible = false
 
-		stopChatter()
 		hideLeaveUI(true)
 
 		local ui = getUI()

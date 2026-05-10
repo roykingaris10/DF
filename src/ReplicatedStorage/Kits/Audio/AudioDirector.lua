@@ -1,25 +1,3 @@
---[[
-    AUDIO DIRECTOR
-    Location: ReplicatedStorage > Kits > Audio > AudioDirector
-    
-    Central music system with priority-based playback.
-    External systems request music, AudioDirector decides what plays.
-    
-    Priority Ladder:
-    100 = Death (locks system until respawn)
-    80  = Boss Combat
-    60  = Combat
-    50  = Story/Cutscene
-    20  = Region (Day/Night)
-    0   = Default/World
-    
-    Usage from external systems:
-    - Combat: AudioDirector:StartCombat(isBoss) / AudioDirector:EndCombat()
-    - Death: AudioDirector:StartDeath() / AudioDirector:EndDeath()
-    - Region: AudioDirector:SetRegion(config, timeState)
-    - Story: AudioDirector:StartStory(trackId) / AudioDirector:EndStory()
-]]
-
 local AudioDirector = {}
 
 local Players = game:GetService("Players")
@@ -27,274 +5,416 @@ local SoundService = game:GetService("SoundService")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Debris = game:GetService("Debris")
 
-local Kits = ReplicatedStorage.Kits
-
-local player = Players.LocalPlayer
-
-AudioDirector.Priority = {
-	DEATH = 100,
-	BOSS_COMBAT = 80,
-	COMBAT = 60,
-	STORY = 50,
-	REGION = 20,
-	DEFAULT = 0,
-}
-
-local Priority = AudioDirector.Priority
+local Kits = ReplicatedStorage:WaitForChild("Kits")
 
 local FadeProfiles = {
-	Death = { out = 0.1, inn = 0.05 },
-	Combat = { out = 0.25, inn = 0.15 },
-	BossCombat = { out = 0.15, inn = 0.1 },
-	Region = { out = 1.5, inn = 1.5 },
-	TimeChange = { out = 2.0, inn = 2.0 },
-	Story = { out = 0.5, inn = 0.5 },
-	Default = { out = 1.0, inn = 1.0 },
+	Default     = { out = 1.0,  inn = 1.0  },
+	Region      = { out = 1.5,  inn = 1.5  },
+	TimeChange  = { out = 2.0,  inn = 2.0  },
+	Combat      = { out = 0.25, inn = 0.15 },
+	BossCombat  = { out = 0.20, inn = 0.10 },
+	Story       = { out = 0.5,  inn = 0.5  },
+	Death       = { out = 0.10, inn = 0.05 },
+	Ambience    = { out = 2.5,  inn = 2.5  },
 }
+
+local CHATTER_MIN_INTERVAL = 3
+local CHATTER_MAX_INTERVAL = 8
+local CHATTER_MIN_VOLUME = 0.20
+local CHATTER_MAX_VOLUME = 0.40
 
 local State = {
-	-- Current playback
-	currentPriority = Priority.DEFAULT,
-	currentTrackId = nil,
-	currentMusic = nil,
-	currentReason = nil,
+	timeState       = "Day",
+	regionConfig    = nil,
+	regionName      = nil,
 
-	-- Lock (for death)
-	isLocked = false,
+	inCombat        = false,
+	isBossCombat    = false,
+	combatTimer     = 0,
+	combatCooldown  = 8,
 
-	-- Combat tracking
-	inCombat = false,
-	isBossCombat = false,
-	combatTimer = 0,
-	combatCooldown = 10,
+	inStory         = false,
+	storyTrackId    = nil,
 
-	-- Region tracking (so we can resume after combat/story)
-	regionConfig = nil,
-	regionTimeState = "Day",
+	isDead          = false,
 
-	-- Story tracking
-	inStory = false,
-	storyTrackId = nil,
-
-	-- Volume (0-1)
-	masterVolume = 1.0,
-	musicVolume = 1.0,
-
-	-- Folders
-	musicFolder = nil,
-
-	-- Update connection
-	updateConnection = nil,
+	masterVolume    = 1.0,
+	musicVolume     = 1.0,
+	ambienceVolume  = 1.0,
 }
 
-local MusicFolders = {}
+local Buses = {
+	Music = {
+		name = "Music",
+		sound = nil,
+		sourceKey = nil,
+		trackId = nil,
+		baseVolume = 0.1,
+		fadeProfile = FadeProfiles.Default,
+	},
+	Ambience = {
+		name = "Ambience",
+		sound = nil,
+		sourceKey = nil,
+		trackId = nil,
+		baseVolume = 0.15,
+		fadeProfile = FadeProfiles.Ambience,
+	},
+}
+
+local Chatter = {
+	task = nil,
+	sourceKey = nil,
+	folder = nil,
+}
+
+local Pools = {
+	Music = { Day = nil, Night = nil, Combat = nil, BossCombat = nil, Death = nil },
+	Ambience = { Day = nil, Night = nil },
+	Chatter = { Day = nil, Night = nil },
+}
+
+local Folders = {
+	audio = nil,
+	music = nil,
+	ambience = nil,
+	chatter = nil,
+}
+
+local updateConnection = nil
+
+local function isValidId(id)
+	return type(id) == "string"
+		and id ~= ""
+		and id ~= "rbxassetid://"
+		and id ~= "rbxassetid://0"
+		and id ~= "rbxassetid://000000000"
+end
+
+local function poolKeyForTime(timeState)
+	if timeState == "Night" or timeState == "Dusk" then return "Night" end
+	return "Day"
+end
+
+local function randomIdFromPool(pool)
+	if not pool then return nil end
+	local valid = {}
+	for _, child in ipairs(pool:GetChildren()) do
+		if child:IsA("Sound") and isValidId(child.SoundId) then
+			table.insert(valid, child.SoundId)
+		end
+	end
+	if #valid == 0 then return nil end
+	return valid[math.random(1, #valid)]
+end
+
+local function regionTrackFor(spec, timeState)
+	if not spec then return nil end
+	if type(spec) == "string" then
+		return isValidId(spec) and spec or nil
+	end
+	if type(spec) == "table" then
+		local key = poolKeyForTime(timeState)
+		if isValidId(spec[key]) then return spec[key] end
+		if isValidId(spec.Day) then return spec.Day end
+		if isValidId(spec.Night) then return spec.Night end
+	end
+	return nil
+end
 
 local function setupFolders()
-	-- Get music folders from ReplicatedStorage
-
-	local musicRoot = Kits.Sounds.Music
-
-	if musicRoot then
-		MusicFolders.Combat = musicRoot:FindFirstChild("Combat")
-		MusicFolders.Day = musicRoot:FindFirstChild("Day")
-		MusicFolders.Night = musicRoot:FindFirstChild("Night")
-		MusicFolders.Death = musicRoot:FindFirstChild("Death")
+	local soundsRoot = Kits:FindFirstChild("Sounds")
+	if soundsRoot then
+		local musicRoot = soundsRoot:FindFirstChild("Music")
+		if musicRoot then
+			Pools.Music.Day        = musicRoot:FindFirstChild("Day")
+			Pools.Music.Night      = musicRoot:FindFirstChild("Night")
+			Pools.Music.Combat     = musicRoot:FindFirstChild("Combat")
+			Pools.Music.BossCombat = musicRoot:FindFirstChild("BossCombat")
+			Pools.Music.Death      = musicRoot:FindFirstChild("Death")
+		end
+		local ambienceRoot = soundsRoot:FindFirstChild("Ambience")
+		if ambienceRoot then
+			Pools.Ambience.Day   = ambienceRoot:FindFirstChild("Day")
+			Pools.Ambience.Night = ambienceRoot:FindFirstChild("Night")
+		end
+		local chatterRoot = soundsRoot:FindFirstChild("Chatter")
+		if chatterRoot then
+			Pools.Chatter.Day   = chatterRoot:FindFirstChild("Day")
+			Pools.Chatter.Night = chatterRoot:FindFirstChild("Night")
+		end
 	end
 
-	-- Create playback folder in SoundService
-	local audioFolder = SoundService:FindFirstChild("AudioDirector")
-	if not audioFolder then
-		audioFolder = Instance.new("Folder")
-		audioFolder.Name = "AudioDirector"
-		audioFolder.Parent = SoundService
+	Folders.audio = SoundService:FindFirstChild("AudioDirector")
+	if not Folders.audio then
+		Folders.audio = Instance.new("Folder")
+		Folders.audio.Name = "AudioDirector"
+		Folders.audio.Parent = SoundService
 	end
 
-	State.musicFolder = audioFolder:FindFirstChild("Music")
-	if not State.musicFolder then
-		State.musicFolder = Instance.new("Folder")
-		State.musicFolder.Name = "Music"
-		State.musicFolder.Parent = audioFolder
-	end
-end
-
-local function getRandomTrackFromFolder(folder)
-	if not folder then return nil end
-	local children = folder:GetChildren()
-	if #children == 0 then return nil end
-	local track = children[math.random(1, #children)]
-	return track and track.SoundId
-end
-
-local function getEffectiveVolume(baseVolume)
-	return (baseVolume or 0.1) * State.masterVolume * State.musicVolume
-end
-
-local function isValidTrackId(trackId)
-	return trackId 
-		and trackId ~= "" 
-		and trackId ~= "rbxassetid://" 
-		and trackId ~= "rbxassetid://000000000"
-end
-
-local function stopMusic(fadeTime, callback)
-	if not State.currentMusic then
-		if callback then callback() end
-		return
+	for _, sub in ipairs({"Music", "Ambience", "Chatter"}) do
+		local folder = Folders.audio:FindFirstChild(sub)
+		if not folder then
+			folder = Instance.new("Folder")
+			folder.Name = sub
+			folder.Parent = Folders.audio
+		end
+		Folders[sub:lower()] = folder
 	end
 
-	local music = State.currentMusic
-	State.currentMusic = nil
-	State.currentTrackId = nil
+	Chatter.folder = Folders.chatter
+end
 
-	local tween = TweenService:Create(music, TweenInfo.new(fadeTime), { Volume = 0 })
+local function effectiveVolume(busName, baseVolume)
+	local m = State.masterVolume
+	if busName == "Music" then
+		return (baseVolume or 0.1) * m * State.musicVolume
+	elseif busName == "Ambience" then
+		return (baseVolume or 0.15) * m * State.ambienceVolume
+	end
+	return (baseVolume or 0.1) * m
+end
+
+local function fadeOutAndDestroy(sound, time)
+	if not sound then return end
+	local tween = TweenService:Create(sound, TweenInfo.new(time), { Volume = 0 })
 	tween:Play()
 	tween.Completed:Connect(function()
-		music:Stop()
-		music:Destroy()
-		if callback then callback() end
+		if sound and sound.Parent then
+			sound:Stop()
+			sound:Destroy()
+		end
 	end)
 end
 
-local function playTrack(trackId, volume, fadeProfile, reason)
-	if not isValidTrackId(trackId) then return false end
-	if trackId == State.currentTrackId then return false end -- Same track, skip
-
-	local profile = fadeProfile or FadeProfiles.Default
-	local targetVolume = getEffectiveVolume(volume)
-
-	stopMusic(profile.out, function()
-		local music = Instance.new("Sound")
-		music.SoundId = trackId
-		music.Looped = true
-		music.Volume = 0
-		music:SetAttribute("BaseVolume", volume or 0.1)
-		music.Parent = State.musicFolder
-		music:Play()
-
-		State.currentMusic = music
-		State.currentTrackId = trackId
-		State.currentReason = reason
-
-		TweenService:Create(music, TweenInfo.new(profile.inn), { Volume = targetVolume }):Play()
-	end)
-
-	return true
+local function spawnBusSound(bus, trackId, baseVolume)
+	local sound = Instance.new("Sound")
+	sound.Name = "Bus_" .. bus.name
+	sound.SoundId = trackId
+	sound.Looped = true
+	sound.Volume = 0
+	sound:SetAttribute("BaseVolume", baseVolume)
+	sound.Parent = Folders[bus.name:lower()] or Folders.audio
+	sound:Play()
+	return sound
 end
 
-local function resolveRegionTrack()
-	local config = State.regionConfig
-	if not config then return nil, 0.1 end
+local function crossfadeBus(busName, trackId, baseVolume, profile)
+	local bus = Buses[busName]
+	local prevSound = bus.sound
+	local fade = profile or bus.fadeProfile or FadeProfiles.Default
 
-	local trackId = nil
-	local music = config.Music
+	local newSound = spawnBusSound(bus, trackId, baseVolume)
+	bus.sound = newSound
+	bus.trackId = trackId
+	bus.baseVolume = baseVolume
 
-	if type(music) == "table" then
-		-- Day/Night variants
-		trackId = music[State.regionTimeState] or music.Day or music.Night
-	elseif isValidTrackId(music) then
-		trackId = music
+	local target = effectiveVolume(busName, baseVolume)
+	TweenService:Create(newSound, TweenInfo.new(fade.inn), { Volume = target }):Play()
+
+	if prevSound then
+		fadeOutAndDestroy(prevSound, fade.out)
 	end
-
-	-- Fallback to Day/Night folders
-	if not isValidTrackId(trackId) then
-		local folder = (State.regionTimeState == "Night" or State.regionTimeState == "Dusk")
-			and MusicFolders.Night
-			or MusicFolders.Day
-		trackId = getRandomTrackFromFolder(folder)
-	end
-
-	return trackId, config.Volume or 0.1
 end
 
-local function playHighestPriority()
-	if State.isLocked then return end
+local function silenceBus(busName, profile)
+	local bus = Buses[busName]
+	if bus.sound then
+		fadeOutAndDestroy(bus.sound, (profile or bus.fadeProfile or FadeProfiles.Default).out)
+		bus.sound = nil
+	end
+	bus.sourceKey = nil
+	bus.trackId = nil
+end
 
-	-- Death (handled separately with lock)
-
-	-- Boss Combat
+local function resolveMusic()
+	if State.isDead then
+		local id = randomIdFromPool(Pools.Music.Death)
+		if id then return "death", id, 0.22, FadeProfiles.Death end
+	end
 	if State.inCombat and State.isBossCombat then
-		local trackId = getRandomTrackFromFolder(MusicFolders.Combat)
-		if trackId and State.currentPriority ~= Priority.BOSS_COMBAT then
-			State.currentPriority = Priority.BOSS_COMBAT
-			playTrack(trackId, 0.15, FadeProfiles.BossCombat, "BossCombat")
-		end
-		return
+		local id = randomIdFromPool(Pools.Music.BossCombat) or randomIdFromPool(Pools.Music.Combat)
+		if id then return "bossCombat", id, 0.18, FadeProfiles.BossCombat end
 	end
-
-	-- Combat
 	if State.inCombat then
-		local trackId = getRandomTrackFromFolder(MusicFolders.Combat)
-		if trackId and State.currentPriority ~= Priority.COMBAT then
-			State.currentPriority = Priority.COMBAT
-			playTrack(trackId, 0.15, FadeProfiles.Combat, "Combat")
+		local id = randomIdFromPool(Pools.Music.Combat)
+		if id then return "combat", id, 0.16, FadeProfiles.Combat end
+	end
+	if State.inStory and isValidId(State.storyTrackId) then
+		return "story", State.storyTrackId, 0.15, FadeProfiles.Story
+	end
+	if State.regionConfig then
+		local id = regionTrackFor(State.regionConfig.Music, State.timeState)
+		if id then
+			return "region:" .. (State.regionName or "?"),
+				id,
+				State.regionConfig.Volume or 0.1,
+				FadeProfiles.Region
 		end
-		return
 	end
+	local generalPool = Pools.Music[poolKeyForTime(State.timeState)]
+	local id = randomIdFromPool(generalPool)
+	if id then
+		return "general:" .. poolKeyForTime(State.timeState), id, 0.08, FadeProfiles.TimeChange
+	end
+	return nil, nil, 0, FadeProfiles.Default
+end
 
-	-- Story
-	if State.inStory and isValidTrackId(State.storyTrackId) then
-		if State.currentPriority ~= Priority.STORY then
-			State.currentPriority = Priority.STORY
-			playTrack(State.storyTrackId, 0.15, FadeProfiles.Story, "Story")
+local function resolveAmbience()
+	if State.isDead then return nil, nil, 0, FadeProfiles.Ambience end
+
+	if State.regionConfig then
+		local id = regionTrackFor(State.regionConfig.Ambience, State.timeState)
+		if id then
+			return "region:" .. (State.regionName or "?"),
+				id,
+				State.regionConfig.AmbienceVolume or 0.15,
+				FadeProfiles.Region
 		end
-		return
 	end
 
-	-- Region
-	local trackId, volume = resolveRegionTrack()
-	if isValidTrackId(trackId) then
-		State.currentPriority = Priority.REGION
-		playTrack(trackId, volume, FadeProfiles.Region, "Region")
-		return
+	local generalPool = Pools.Ambience[poolKeyForTime(State.timeState)]
+	local id = randomIdFromPool(generalPool)
+	if id then
+		return "general:" .. poolKeyForTime(State.timeState), id, 0.12, FadeProfiles.Ambience
+	end
+	return nil, nil, 0, FadeProfiles.Ambience
+end
+
+local function resolveChatter()
+	if State.isDead then return nil, nil end
+
+	if State.regionConfig
+		and State.regionConfig.Chatter
+		and State.regionConfig.ChatterSounds
+		and #State.regionConfig.ChatterSounds > 0 then
+		local list = {}
+		for _, id in ipairs(State.regionConfig.ChatterSounds) do
+			if isValidId(id) then table.insert(list, id) end
+		end
+		if #list > 0 then
+			return "region:" .. (State.regionName or "?"), list
+		end
 	end
 
-	-- Default (silence or world music from Day folder)
-	State.currentPriority = Priority.DEFAULT
-	local defaultTrack = getRandomTrackFromFolder(MusicFolders.Day)
-	if defaultTrack then
-		playTrack(defaultTrack, 0.08, FadeProfiles.Default, "Default")
+	local pool = Pools.Chatter[poolKeyForTime(State.timeState)]
+	if pool then
+		local list = {}
+		for _, child in ipairs(pool:GetChildren()) do
+			if child:IsA("Sound") and isValidId(child.SoundId) then
+				table.insert(list, child.SoundId)
+			end
+		end
+		if #list > 0 then
+			return "general:" .. poolKeyForTime(State.timeState), list
+		end
+	end
+	return nil, nil
+end
+
+local function stopChatter()
+	if Chatter.task then
+		pcall(function() task.cancel(Chatter.task) end)
+		Chatter.task = nil
+	end
+	if Chatter.folder then
+		for _, child in ipairs(Chatter.folder:GetChildren()) do
+			if child:IsA("Sound") then child:Destroy() end
+		end
 	end
 end
 
-function AudioDirector:SetRegion(config, timeState)
-	State.regionConfig = config
-	State.regionTimeState = timeState or State.regionTimeState or "Day"
+local function startChatter(sessionKey, soundIds)
+	Chatter.task = task.spawn(function()
+		while Chatter.sourceKey == sessionKey do
+			task.wait(math.random(CHATTER_MIN_INTERVAL, CHATTER_MAX_INTERVAL))
+			if Chatter.sourceKey ~= sessionKey then break end
 
-	if not State.isLocked and not State.inCombat and not State.inStory then
-		playHighestPriority()
+			local id = soundIds[math.random(1, #soundIds)]
+			local s = Instance.new("Sound")
+			s.Name = "ChatterShot"
+			s.SoundId = id
+			local base = math.random(math.floor(CHATTER_MIN_VOLUME * 100), math.floor(CHATTER_MAX_VOLUME * 100)) / 100
+			s.Volume = base * State.masterVolume * State.ambienceVolume
+			s:SetAttribute("BaseVolume", base)
+			s.Parent = Chatter.folder
+			s:Play()
+			s.Ended:Connect(function() s:Destroy() end)
+			Debris:AddItem(s, 30)
+		end
+	end)
+end
+
+local function updateBus(busName, resolver)
+	local key, trackId, baseVolume, profile = resolver()
+	local bus = Buses[busName]
+
+	if not key or not trackId then
+		if bus.sound then silenceBus(busName, profile) end
+		bus.sourceKey = nil
+		return
 	end
+
+	if bus.sourceKey == key and bus.trackId == trackId then return end
+
+	bus.sourceKey = key
+	crossfadeBus(busName, trackId, baseVolume, profile)
+end
+
+local function updateChatter()
+	local key, sounds = resolveChatter()
+	if Chatter.sourceKey == key then return end
+	stopChatter()
+	Chatter.sourceKey = key
+	if key and sounds then
+		startChatter(key, sounds)
+	end
+end
+
+local function refresh()
+	updateBus("Music", resolveMusic)
+	updateBus("Ambience", resolveAmbience)
+	updateChatter()
+end
+
+local function refreshVolumes()
+	for _, bus in pairs(Buses) do
+		if bus.sound and bus.sound.Parent then
+			bus.sound.Volume = effectiveVolume(bus.name, bus.sound:GetAttribute("BaseVolume") or 0.1)
+		end
+	end
+end
+
+function AudioDirector:SetRegion(config, timeState, regionName)
+	State.regionConfig = config
+	State.regionName = regionName or (config and config.DisplayName) or nil
+	if timeState then State.timeState = timeState end
+	refresh()
 end
 
 function AudioDirector:ClearRegion()
 	State.regionConfig = nil
-
-	if not State.isLocked and not State.inCombat and not State.inStory then
-		playHighestPriority()
-	end
+	State.regionName = nil
+	refresh()
 end
 
 function AudioDirector:SetTimeState(timeState)
-	if State.regionTimeState == timeState then return end
-	State.regionTimeState = timeState
+	if not timeState or State.timeState == timeState then return end
+	State.timeState = timeState
+	refresh()
+end
 
-	-- Only change music if we're at region priority
-	if State.currentPriority == Priority.REGION then
-		local trackId, volume = resolveRegionTrack()
-		if isValidTrackId(trackId) and trackId ~= State.currentTrackId then
-			playTrack(trackId, volume, FadeProfiles.TimeChange, "Region")
-		end
-	end
+function AudioDirector:GetTimeState()
+	return State.timeState
 end
 
 function AudioDirector:StartCombat(isBoss)
-	if State.isLocked then return end
-
 	State.inCombat = true
 	State.isBossCombat = isBoss or false
 	State.combatTimer = State.combatCooldown
-
-	playHighestPriority()
+	refresh()
 end
 
 function AudioDirector:ExtendCombat()
@@ -305,12 +425,10 @@ end
 
 function AudioDirector:EndCombat()
 	if not State.inCombat then return end
-
 	State.inCombat = false
 	State.isBossCombat = false
 	State.combatTimer = 0
-
-	playHighestPriority()
+	refresh()
 end
 
 function AudioDirector:IsInCombat()
@@ -318,114 +436,90 @@ function AudioDirector:IsInCombat()
 end
 
 function AudioDirector:StartDeath()
-	State.isLocked = true
-	State.currentPriority = Priority.DEATH
+	State.isDead = true
 	State.inCombat = false
+	State.isBossCombat = false
 	State.combatTimer = 0
-
-	local trackId = getRandomTrackFromFolder(MusicFolders.Death)
-	if trackId then
-		playTrack(trackId, 0.25, FadeProfiles.Death, "Death")
-	end
+	refresh()
 end
 
 function AudioDirector:EndDeath()
-	State.isLocked = false
-	State.currentPriority = Priority.DEFAULT
-
-	playHighestPriority()
+	if not State.isDead then return end
+	State.isDead = false
+	refresh()
 end
 
 function AudioDirector:StartStory(trackId)
-	if State.isLocked then return end
-
 	State.inStory = true
 	State.storyTrackId = trackId
-
-	playHighestPriority()
+	refresh()
 end
 
 function AudioDirector:EndStory()
 	State.inStory = false
 	State.storyTrackId = nil
-
-	playHighestPriority()
+	refresh()
 end
 
-function AudioDirector:PlayCustom(trackId, priority, volume, fadeProfile)
-	if State.isLocked and priority < Priority.DEATH then return false end
-	if priority < State.currentPriority then return false end
-
-	State.currentPriority = priority
-	return playTrack(trackId, volume or 0.1, fadeProfile or FadeProfiles.Default, "Custom")
+function AudioDirector:SetMasterVolume(v)
+	State.masterVolume = math.clamp(v or 1, 0, 1)
+	refreshVolumes()
 end
 
-function AudioDirector:ReleaseCustom(priority)
-	if State.currentPriority == priority and State.currentReason == "Custom" then
-		State.currentPriority = Priority.DEFAULT
-		playHighestPriority()
-	end
+function AudioDirector:SetMusicVolume(v)
+	State.musicVolume = math.clamp(v or 1, 0, 1)
+	refreshVolumes()
 end
 
-function AudioDirector:SetMasterVolume(volume)
-	State.masterVolume = math.clamp(volume, 0, 1)
-	AudioDirector:RefreshVolume()
-end
-
-function AudioDirector:SetMusicVolume(volume)
-	State.musicVolume = math.clamp(volume, 0, 1)
-	AudioDirector:RefreshVolume()
-end
-
-function AudioDirector:RefreshVolume()
-	if State.currentMusic then
-		local baseVolume = State.currentMusic:GetAttribute("BaseVolume") or 0.1
-		State.currentMusic.Volume = getEffectiveVolume(baseVolume)
-	end
+function AudioDirector:SetAmbienceVolume(v)
+	State.ambienceVolume = math.clamp(v or 1, 0, 1)
+	refreshVolumes()
 end
 
 function AudioDirector:GetVolumes()
 	return {
 		master = State.masterVolume,
 		music = State.musicVolume,
+		ambience = State.ambienceVolume,
 	}
 end
 
-function AudioDirector:GetCurrentPriority()
-	return State.currentPriority
+function AudioDirector:GetCurrentMusicTrack()
+	return Buses.Music.trackId
 end
 
-function AudioDirector:GetCurrentTrack()
-	return State.currentTrackId
+function AudioDirector:GetCurrentAmbienceTrack()
+	return Buses.Ambience.trackId
 end
 
-function AudioDirector:IsLocked()
-	return State.isLocked
+function AudioDirector:Refresh()
+	refresh()
 end
 
 local function update(dt)
-	if State.inCombat and not State.isLocked then
-		State.combatTimer = State.combatTimer - dt
+	if State.inCombat and not State.isDead then
+		State.combatTimer -= dt
 		if State.combatTimer <= 0 then
 			AudioDirector:EndCombat()
 		end
 	end
 end
 
-
 function AudioDirector:Init()
 	setupFolders()
-
-	State.updateConnection = RunService.Heartbeat:Connect(update)
+	if updateConnection then return end
+	updateConnection = RunService.Heartbeat:Connect(update)
+	refresh()
 end
 
 function AudioDirector:Cleanup()
-	if State.updateConnection then
-		State.updateConnection:Disconnect()
-		State.updateConnection = nil
+	if updateConnection then
+		updateConnection:Disconnect()
+		updateConnection = nil
 	end
-
-	stopMusic(0)
+	stopChatter()
+	silenceBus("Music")
+	silenceBus("Ambience")
 end
 
 return AudioDirector

@@ -20,12 +20,16 @@ local RegionConfig = {
 		LogueTown = {
 			DisplayName = "Logue Town",
 			Subtitle = "The people labour, in hopes of liberation.",
-			-- Day/Night variants (optional)
 			Music = {
 				Day = "rbxassetid://79556994575040",
-				Night = "rbxassetid://79556994575041", -- Different night track
+				Night = "rbxassetid://79556994575041",
 			},
 			Volume = 0.1,
+			Ambience = {
+				Day = "rbxassetid://",
+				Night = "rbxassetid://",
+			},
+			AmbienceVolume = 0.15,
 			EnterSFX = "rbxassetid://987654322",
 			Chatter = true,
 			ChatterSounds = {
