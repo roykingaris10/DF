@@ -9,19 +9,18 @@ return function(Client)
 	local player = Client.player
 	local TweenService = game:GetService("TweenService")
 	local SoundService = game:GetService("SoundService")
+	local UserInputService = game:GetService("UserInputService")
 	local ContentProvider = game:GetService("ContentProvider")
 	local ReplicatedStorage = game:GetService("ReplicatedStorage")
 	local PlayerGui = player:WaitForChild("PlayerGui")
 
-	-- Get LowGFXService (it's a table, not a function)
 	local LowGFXService = nil
-
-	--═══════════════════════════════════════════════════════════════════════════
-	-- STATE
-	--═══════════════════════════════════════════════════════════════════════════
+	local AudioDirector = nil
 
 	local State = {
 		lowGFXEnabled = false,
+		masterVolume = 1.0,
+		dragging = false,
 		connections = {},
 	}
 
@@ -62,46 +61,45 @@ return function(Client)
 	local ToggleFrame
 	local OnButton
 	local OffButton
+	local VolumeSlide
+	local VolumeTrack
+	local VolumeMarker
 
 	local function setupReferences()
 		UI = PlayerGui:WaitForChild("UI")
 
 		local topHolder = UI:FindFirstChild("topHolder")
-		if not topHolder then 
+		if not topHolder then
 			warn("[SettingsController] TopHolder not found")
-			return false 
+			return false
 		end
 
 		SettingsHolder = topHolder:FindFirstChild("SettingsHolder")
-		if not SettingsHolder then 
+		if not SettingsHolder then
 			warn("[SettingsController] SettingsHolder not found")
-			return false 
+			return false
 		end
 
 		local mainFrame = SettingsHolder:FindFirstChild("mainFrame")
-		if not mainFrame then 
+		if not mainFrame then
 			warn("[SettingsController] mainFrame not found")
-			return false 
+			return false
 		end
 
 		LowGraphFrame = mainFrame:FindFirstChild("lowGraphFrame")
-		if not LowGraphFrame then 
-			warn("[SettingsController] lowGraphFrame not found")
-			return false 
+		if LowGraphFrame then
+			ToggleFrame = LowGraphFrame:FindFirstChild("toggleFrame")
+			if ToggleFrame then
+				OnButton = ToggleFrame:FindFirstChild("on")
+				OffButton = ToggleFrame:FindFirstChild("off")
+			end
 		end
 
-		ToggleFrame = LowGraphFrame:FindFirstChild("toggleFrame")
-		if not ToggleFrame then 
-			warn("[SettingsController] toggleFrame not found")
-			return false 
-		end
-
-		OnButton = ToggleFrame:FindFirstChild("on")
-		OffButton = ToggleFrame:FindFirstChild("off")
-
-		if not OnButton or not OffButton then
-			warn("[SettingsController] on/off buttons not found")
-			return false
+		VolumeSlide = mainFrame:FindFirstChild("volumeSlide")
+		if VolumeSlide then
+			VolumeTrack = VolumeSlide:FindFirstChild("slider")
+				or VolumeSlide:FindFirstChild("ImageLabel")
+			VolumeMarker = VolumeSlide:FindFirstChild("marker")
 		end
 
 		return true
@@ -209,9 +207,75 @@ return function(Client)
 		end))
 	end
 
-	--═══════════════════════════════════════════════════════════════════════════
-	-- LOAD SAVED SETTINGS
-	--═══════════════════════════════════════════════════════════════════════════
+	local function applyVolume(percent, instant)
+		percent = math.clamp(percent or 0, 0, 1)
+		State.masterVolume = percent
+		player:SetAttribute("MasterVolume", percent)
+
+		if AudioDirector and AudioDirector.SetMasterVolume then
+			AudioDirector:SetMasterVolume(percent)
+		end
+
+		if VolumeMarker then
+			local existingY = VolumeMarker.Position.Y
+			local target = UDim2.new(percent, 0, existingY.Scale, existingY.Offset)
+			if instant then
+				VolumeMarker.Position = target
+			else
+				TweenService:Create(VolumeMarker, TweenConfig.toggle, { Position = target }):Play()
+			end
+		end
+	end
+
+	local function percentFromInput(inputPosition)
+		if not VolumeTrack then return State.masterVolume end
+		local origin = VolumeTrack.AbsolutePosition.X
+		local span = VolumeTrack.AbsoluteSize.X
+		if span <= 0 then return State.masterVolume end
+		return math.clamp((inputPosition.X - origin) / span, 0, 1)
+	end
+
+	local function setupVolumeSlider()
+		if not VolumeTrack then return end
+
+		if VolumeTrack:IsA("GuiObject") then
+			VolumeTrack.Active = true
+		end
+
+		table.insert(State.connections, VolumeTrack.InputBegan:Connect(function(input)
+			if input.UserInputType == Enum.UserInputType.MouseButton1
+				or input.UserInputType == Enum.UserInputType.Touch then
+				State.dragging = true
+				applyVolume(percentFromInput(input.Position), true)
+			end
+		end))
+
+		table.insert(State.connections, VolumeTrack.InputEnded:Connect(function(input)
+			if input.UserInputType == Enum.UserInputType.MouseButton1
+				or input.UserInputType == Enum.UserInputType.Touch then
+				if State.dragging then
+					toggleSound:Stop()
+					toggleSound:Play()
+				end
+				State.dragging = false
+			end
+		end))
+
+		table.insert(State.connections, UserInputService.InputChanged:Connect(function(input)
+			if not State.dragging then return end
+			if input.UserInputType == Enum.UserInputType.MouseMovement
+				or input.UserInputType == Enum.UserInputType.Touch then
+				applyVolume(percentFromInput(input.Position), true)
+			end
+		end))
+
+		table.insert(State.connections, UserInputService.InputEnded:Connect(function(input)
+			if input.UserInputType == Enum.UserInputType.MouseButton1
+				or input.UserInputType == Enum.UserInputType.Touch then
+				State.dragging = false
+			end
+		end))
+	end
 
 	local function loadSavedSettings()
 		local savedLowGFX = player:GetAttribute("LowGFXEnabled")
@@ -224,6 +288,10 @@ return function(Client)
 		else
 			updateToggleVisuals(false, true)
 		end
+
+		local savedVolume = player:GetAttribute("MasterVolume")
+		if savedVolume == nil then savedVolume = 1.0 end
+		applyVolume(savedVolume, true)
 	end
 
 	--═══════════════════════════════════════════════════════════════════════════
@@ -231,24 +299,34 @@ return function(Client)
 	--═══════════════════════════════════════════════════════════════════════════
 
 	function SettingsController:Init()
-		-- Load LowGFXService
-		local success, result = pcall(function()
+		local lowOk, lowRes = pcall(function()
 			return require(ReplicatedStorage.Kits.Nodes.Utility.LowGFXService)
 		end)
+		if lowOk then LowGFXService = lowRes end
 
-		if success then
-			LowGFXService = result
-		else
-			warn("[SettingsController] Failed to load LowGFXService:", result)
-		end
+		local audioOk, audioRes = pcall(function()
+			return require(ReplicatedStorage.Kits.Audio.AudioDirector)
+		end)
+		if audioOk then AudioDirector = audioRes end
 
 		if not setupReferences() then
 			warn("[SettingsController] Failed to setup references")
 			return
 		end
 
-		setupToggleButtons()
+		if OnButton and OffButton then
+			setupToggleButtons()
+		end
+		setupVolumeSlider()
 		loadSavedSettings()
+	end
+
+	function SettingsController:SetMasterVolume(percent)
+		applyVolume(percent, false)
+	end
+
+	function SettingsController:GetMasterVolume()
+		return State.masterVolume
 	end
 
 	function SettingsController:SetLowGFX(enabled)
