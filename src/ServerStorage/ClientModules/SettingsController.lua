@@ -1,8 +1,3 @@
---[[
-    SettingsController
-    Location: Client Module
-]]
-
 return function(Client)
 	local SettingsController = {}
 
@@ -24,10 +19,6 @@ return function(Client)
 		connections = {},
 	}
 
-	--═══════════════════════════════════════════════════════════════════════════
-	-- SOUNDS
-	--═══════════════════════════════════════════════════════════════════════════
-
 	local toggleSound = Instance.new("Sound")
 	toggleSound.Name = "SettingsSFX_Toggle"
 	toggleSound.SoundId = "rbxassetid://103866342467024"
@@ -42,18 +33,10 @@ return function(Client)
 
 	ContentProvider:PreloadAsync({toggleSound, hoverSound})
 
-	--═══════════════════════════════════════════════════════════════════════════
-	-- TWEEN CONFIG
-	--═══════════════════════════════════════════════════════════════════════════
-
 	local TweenConfig = {
 		toggle = TweenInfo.new(0.2, Enum.EasingStyle.Quint, Enum.EasingDirection.Out),
 		hover = TweenInfo.new(0.15, Enum.EasingStyle.Quint, Enum.EasingDirection.Out),
 	}
-
-	--═══════════════════════════════════════════════════════════════════════════
-	-- REFERENCES
-	--═══════════════════════════════════════════════════════════════════════════
 
 	local UI
 	local SettingsHolder
@@ -97,17 +80,17 @@ return function(Client)
 
 		VolumeSlide = mainFrame:FindFirstChild("volumeSlide")
 		if VolumeSlide then
-			VolumeTrack = VolumeSlide:FindFirstChild("slider")
-				or VolumeSlide:FindFirstChild("ImageLabel")
-			VolumeMarker = VolumeSlide:FindFirstChild("marker")
+			local sliderHolder = VolumeSlide:FindFirstChild("sliderHolder") or VolumeSlide
+			VolumeTrack = sliderHolder:FindFirstChild("slider")
+				or sliderHolder:FindFirstChild("ImageLabel")
+				or sliderHolder
+			VolumeMarker = (VolumeTrack and VolumeTrack:FindFirstChild("marker"))
+				or sliderHolder:FindFirstChild("marker")
+				or VolumeSlide:FindFirstChild("marker", true)
 		end
 
 		return true
 	end
-
-	--═══════════════════════════════════════════════════════════════════════════
-	-- TOGGLE VISUALS
-	--═══════════════════════════════════════════════════════════════════════════
 
 	local function updateToggleVisuals(enabled, instant)
 		if not OnButton or not OffButton then return end
@@ -115,9 +98,7 @@ return function(Client)
 		local duration = instant and 0 or 0.2
 		local tweenInfo = TweenInfo.new(duration, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
 
-		-- Only tween TextTransparency and ImageTransparency, never BackgroundTransparency
 		if enabled then
-			-- ON state - highlight "on" button
 			if OnButton:IsA("TextButton") then
 				TweenService:Create(OnButton, tweenInfo, {TextTransparency = 0}):Play()
 			elseif OnButton:IsA("ImageButton") then
@@ -130,7 +111,6 @@ return function(Client)
 				TweenService:Create(OffButton, tweenInfo, {ImageTransparency = 0.5}):Play()
 			end
 		else
-			-- OFF state - highlight "off" button
 			if OffButton:IsA("TextButton") then
 				TweenService:Create(OffButton, tweenInfo, {TextTransparency = 0}):Play()
 			elseif OffButton:IsA("ImageButton") then
@@ -145,10 +125,6 @@ return function(Client)
 		end
 	end
 
-	--═══════════════════════════════════════════════════════════════════════════
-	-- LOW GFX TOGGLE
-	--═══════════════════════════════════════════════════════════════════════════
-
 	local function setLowGFX(enabled)
 		if State.lowGFXEnabled == enabled then return end
 
@@ -159,7 +135,6 @@ return function(Client)
 
 		updateToggleVisuals(enabled, false)
 
-		-- Apply low GFX mode
 		if LowGFXService then
 			if enabled then
 				LowGFXService.Enable()
@@ -169,18 +144,11 @@ return function(Client)
 		end
 
 		player:SetAttribute("LowGFXEnabled", enabled)
-
-		print("[SettingsController] Low GFX Mode:", enabled and "ENABLED" or "DISABLED")
 	end
-
-	--═══════════════════════════════════════════════════════════════════════════
-	-- BUTTON SETUP
-	--═══════════════════════════════════════════════════════════════════════════
 
 	local function setupToggleButtons()
 		if not OnButton or not OffButton then return end
 
-		-- On button hover
 		table.insert(State.connections, OnButton.MouseEnter:Connect(function()
 			if not State.lowGFXEnabled then
 				hoverSound:Stop()
@@ -188,12 +156,10 @@ return function(Client)
 			end
 		end))
 
-		-- On button click
 		table.insert(State.connections, OnButton.Activated:Connect(function()
 			setLowGFX(true)
 		end))
 
-		-- Off button hover
 		table.insert(State.connections, OffButton.MouseEnter:Connect(function()
 			if State.lowGFXEnabled then
 				hoverSound:Stop()
@@ -201,7 +167,6 @@ return function(Client)
 			end
 		end))
 
-		-- Off button click
 		table.insert(State.connections, OffButton.Activated:Connect(function()
 			setLowGFX(false)
 		end))
@@ -293,10 +258,6 @@ return function(Client)
 		if savedVolume == nil then savedVolume = 1.0 end
 		applyVolume(savedVolume, true)
 	end
-
-	--═══════════════════════════════════════════════════════════════════════════
-	-- PUBLIC API
-	--═══════════════════════════════════════════════════════════════════════════
 
 	function SettingsController:Init()
 		local lowOk, lowRes = pcall(function()
