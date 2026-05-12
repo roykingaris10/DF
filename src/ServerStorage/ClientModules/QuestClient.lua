@@ -100,18 +100,7 @@ return function(Client)
 		refs.tracker = root
 		refs.trackerTitle = find("QuestTrackerTitle", "QuestNameLabel", "QuestTitle")
 		refs.trackerObjectivesScroll = find("ObjectiveScroll", "ObjectivesScroll", "ObjectiveContainer")
-		refs.trackerRewardsScroll = find("RewardsScroll", "RewardScroll", "RewardsContainer")
-		refs.trackerDivider = find("divider", "Divider")
 		refs.trackerTimer = find("Timer", "TimerLabel")
-
-		refs.trackerRewardsHeader = nil
-		if refs.trackerDivider then
-			refs.trackerRewardsHeader = refs.trackerDivider:FindFirstChild("Title", true)
-				or refs.trackerDivider:FindFirstChild("TitleLabel", true)
-		end
-		if refs.trackerRewardsHeader and refs.trackerRewardsHeader:IsA("TextLabel") then
-			refs.trackerRewardsHeader.Text = "⭐ Rewards"
-		end
 
 		setTrackerVisible(false)
 		return true
@@ -432,26 +421,10 @@ return function(Client)
 	local DONE_PREFIX = '<font color="#7FCC8F">✓</font>'
 	local ACTIVE_PREFIX = '<font color="#7FCC8F"><b>◇</b></font>'
 	local PENDING_PREFIX = '<font color="rgb(150,150,165)">·</font>'
-	local REWARD_PREFIX = '🔹'
 
 	local DONE_COLOR = "rgb(140,140,150)"
 	local ACTIVE_COLOR = "#7FCC8F"
 	local PENDING_COLOR = "rgb(190,190,200)"
-
-	local REWARD_COLORS = {
-		XP = "#7FCC8F",          -- green
-		Beli = "#FFD45A",        -- yellow
-		Item = "#5BB8FF",        -- blue
-		Bounty = "#E66060",      -- red
-		Reputation = "#C49BFF",  -- purple
-		Title = "#FFAA66",       -- orange
-		Skill = "#5BE5E5",       -- cyan
-		Custom = "rgb(200,200,210)",
-	}
-
-	local function rewardColor(reward)
-		return REWARD_COLORS[reward.Type] or REWARD_COLORS.Custom
-	end
 
 	local function spawnLine(container, template, text, order)
 		if not container or not template then return end
@@ -523,31 +496,6 @@ return function(Client)
 		end
 	end
 
-	local function fillRewards(quest)
-		local container = refs.trackerRewardsScroll
-		if not container then return false end
-		local template = getKitTemplate("RewardsText")
-		if not template then return false end
-
-		clearClones(container)
-
-		local order = 0
-		local any = false
-		for _, reward in ipairs(quest.Rewards or {}) do
-			order += 1
-			any = true
-			local color = rewardColor(reward)
-			local text = string.format(
-				'%s <font color="%s">%s</font>',
-				REWARD_PREFIX,
-				color,
-				string.upper(rewardLine(reward))
-			)
-			spawnLine(container, template, text, order)
-		end
-		return any
-	end
-
 	function QuestClient:RefreshTracker()
 		if not refs.tracker then return end
 
@@ -558,8 +506,6 @@ return function(Client)
 			setTrackerVisible(false)
 			if refs.trackerTitle then refs.trackerTitle.Text = "" end
 			clearClones(refs.trackerObjectivesScroll)
-			clearClones(refs.trackerRewardsScroll)
-			if refs.trackerDivider then refs.trackerDivider.Visible = false end
 			if refs.trackerTimer then refs.trackerTimer.Visible = false end
 			return
 		end
@@ -593,9 +539,6 @@ return function(Client)
 		end
 
 		fillObjectives(quest, progress)
-		local hasRewards = fillRewards(quest)
-
-		if refs.trackerDivider then refs.trackerDivider.Visible = hasRewards end
 
 		local timeStr = timeRemainingText(progress)
 		if refs.trackerTimer then
