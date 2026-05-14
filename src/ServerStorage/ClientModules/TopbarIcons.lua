@@ -6,6 +6,7 @@ return function(Client)
 	local ReplicatedStorage = game:GetService("ReplicatedStorage")
 	local StarterPlayer = game:GetService("StarterPlayer")
 	local Players = game:GetService("Players")
+	local Stats = game:GetService("Stats")
 
 	local Icon = nil
 	local fpsIcon = nil
@@ -25,6 +26,25 @@ return function(Client)
 		Cloudy = "☁",
 		Fog = "🌫",
 		Snow = "❄",
+	}
+
+	local WEATHER_LABEL = {
+		Day = "Clear",
+		Night = "Clear",
+		Dawn = "Dawn",
+		Dusk = "Dusk",
+		Storm = "Stormy",
+		Rain = "Rainy",
+		Cloudy = "Cloudy",
+		Fog = "Foggy",
+		Snow = "Snowing",
+	}
+
+	local TIME_LABEL = {
+		Day = "Day",
+		Night = "Night",
+		Dawn = "Dawn",
+		Dusk = "Dusk",
 	}
 
 	local function deepFindModule(root, depth)
@@ -117,6 +137,26 @@ return function(Client)
 		end
 	end
 
+	local function setIconCaption(icon, text)
+		if not icon then return end
+		callMethod(icon, "setCaption", text)
+	end
+
+	local function removeExampleIcons()
+		local ok, icons = pcall(function()
+			if Icon and type(Icon.getIcons) == "function" then
+				return Icon.getIcons()
+			end
+			return nil
+		end)
+		if not ok or type(icons) ~= "table" then return end
+		for _, existing in pairs(icons) do
+			if existing and existing ~= fpsIcon and existing ~= pingIcon and existing ~= weatherIcon then
+				pcall(function() existing:destroy() end)
+			end
+		end
+	end
+
 	local function createIcon(name, order, initialLabel)
 		local icon = Icon.new()
 		setIconName(icon, name)
@@ -144,16 +184,35 @@ return function(Client)
 		end)
 	end
 
+	local function getPingMs()
+		local ok, ms = pcall(function()
+			local net = Stats:FindFirstChild("Network")
+			local serverStats = net and net:FindFirstChild("ServerStatsItem")
+			local dataPing = serverStats and serverStats:FindFirstChild("Data Ping")
+			if dataPing then
+				return math.floor(dataPing:GetValue() + 0.5)
+			end
+			return nil
+		end)
+		if ok and type(ms) == "number" and ms > 0 then
+			return ms
+		end
+
+		local ok2, fallback = pcall(function()
+			return math.floor(player:GetNetworkPing() * 1000 + 0.5)
+		end)
+		if ok2 and type(fallback) == "number" then
+			return fallback
+		end
+		return 0
+	end
+
 	local function setupPing()
 		task.spawn(function()
 			while pingIcon do
 				task.wait(1)
-				local ok, ms = pcall(function()
-					return math.floor(player:GetNetworkPing() * 1000)
-				end)
-				if ok then
-					setIconLabel(pingIcon, ms .. " MS")
-				end
+				local ms = getPingMs()
+				setIconLabel(pingIcon, ms .. " MS")
 			end
 		end)
 	end
@@ -164,6 +223,10 @@ return function(Client)
 		local timeState = player:GetAttribute("TimeState") or "Day"
 		local emoji = (weather and WEATHER_EMOJI[weather]) or WEATHER_EMOJI[timeState] or "☀"
 		setIconLabel(weatherIcon, emoji)
+
+		local timeText = TIME_LABEL[timeState] or timeState or "Day"
+		local weatherText = (weather and WEATHER_LABEL[weather]) or "Clear"
+		setIconCaption(weatherIcon, timeText .. " · " .. weatherText)
 	end
 
 	local function setupWeather()
@@ -184,6 +247,8 @@ return function(Client)
 
 		local okW, weather = pcall(createIcon, "WeatherIcon", 3, "☀")
 		if okW then weatherIcon = weather end
+
+		removeExampleIcons()
 
 		if fpsIcon then setupFPS() end
 		if pingIcon then setupPing() end
