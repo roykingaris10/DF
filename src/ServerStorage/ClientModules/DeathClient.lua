@@ -434,10 +434,14 @@ return function(Client)
 		for _, part in ipairs(state.character:GetDescendants()) do
 			if part:IsA("BasePart") then
 				part.Touched:Connect(function(hit)
+					if not hit then return end
 					if hit:GetAttribute("DealsDamage") or hit.Name:lower():find("death") or hit.Name:lower():find("kill") then
 						state.lastDamageSource = hit.Name
 					end
-					local hitPlayer = Players:GetPlayerFromCharacter(hit.Parent) or Players:GetPlayerFromCharacter(hit.Parent.Parent)
+					local parent = hit.Parent
+					if not parent then return end
+					local hitPlayer = Players:GetPlayerFromCharacter(parent)
+						or (parent.Parent and Players:GetPlayerFromCharacter(parent.Parent))
 					if hitPlayer and hitPlayer ~= player then
 						state.lastDamageSource = hitPlayer.Name
 						state.lastKillerCharacter = hitPlayer.Character
