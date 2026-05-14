@@ -82,6 +82,17 @@ return function(Client)
 		return part.Position.Y + (part.Size.Y / 2)
 	end
 
+	local function isCharacterPart(part)
+		local model = part:FindFirstAncestorOfClass("Model")
+		while model do
+			if model:FindFirstChildOfClass("Humanoid") or model:FindFirstChild("HumanoidRootPart") then
+				return true
+			end
+			model = model:FindFirstAncestorOfClass("Model")
+		end
+		return false
+	end
+
 	local function buildRayParams(character)
 		local rp = RaycastParams.new()
 		rp.FilterType = Enum.RaycastFilterType.Exclude
@@ -116,6 +127,7 @@ return function(Client)
 
 		local part = result.Instance
 		if part:GetAttribute("NoVault") then return nil end
+		if isCharacterPart(part) then return nil end
 
 		local topY = highestY(part)
 		local clearOrigin = result.Position + Vector3.new(0, CFG.OverheadClearance, 0)
