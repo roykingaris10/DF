@@ -157,6 +157,16 @@ return function(Client)
 		end
 	end
 
+	local function setIconImageScale(icon, scale)
+		if not icon then return end
+		callMethod(icon, "setImageScale", scale)
+	end
+
+	local function setIconSize(icon, w, h)
+		if not icon then return end
+		callMethod(icon, "setSize", w, h)
+	end
+
 	local function applyCinematic(enabled)
 		local PlayerGui = player:FindFirstChildOfClass("PlayerGui")
 		if not PlayerGui then return end
@@ -354,10 +364,17 @@ return function(Client)
 		if okP then pingIcon = ping end
 
 		local okW, weather = pcall(createIcon, "WeatherIcon", 3, "☀")
-		if okW then weatherIcon = weather end
+		if okW then
+			weatherIcon = weather
+			setIconSize(weatherIcon, 44, 36)
+		end
 
 		local okC, cine = pcall(createIcon, "CinematicIcon", 4, "")
-		if okC then cinematicIcon = cine end
+		if okC then
+			cinematicIcon = cine
+			setIconSize(cinematicIcon, 44, 36)
+			setIconImageScale(cinematicIcon, 0.95)
+		end
 
 		removeExampleIcons()
 
