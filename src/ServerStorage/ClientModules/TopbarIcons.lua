@@ -17,15 +17,15 @@ return function(Client)
 	local FPS_WINDOW = 0.5
 	local connections = {}
 
-	local CINEMATIC_OFF_ID = "rbxassetid://92389470242469"
-	local CINEMATIC_ON_ID = "rbxassetid://126080037118931"
+	local CINEMATIC_OFF_ID = "rbxassetid://115608518897999"
+	local CINEMATIC_ON_ID = "rbxassetid://102564701297875"
 	local CINEMATIC_TARGET_GUIS = { "HUD", "UI", "UITopbar" }
 	local cinematicEnabled = false
 	local cinematicSavedGuiState = {}
 	local cinematicSavedChat = nil
 
 	local WEATHER_EMOJI = {
-		Day = "☀",
+		Day = "🌞",
 		Night = "🌙",
 		Dawn = "🌅",
 		Dusk = "🌆",
