@@ -158,6 +158,17 @@ return function(Client)
 		local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
 		local humanoid = character:WaitForChild("Humanoid")
 
+		-- Silence Roblox default Running sound so it doesn't play under ours
+		task.spawn(function()
+			local running = humanoidRootPart:WaitForChild("Running", 5)
+			if running then
+				running.Volume = 0
+				running:GetPropertyChangedSignal("Volume"):Connect(function()
+					if running.Volume ~= 0 then running.Volume = 0 end
+				end)
+			end
+		end)
+
 		-- Cleanup old sounds
 		for _, child in ipairs(humanoidRootPart:GetChildren()) do
 			if child:IsA("Sound") and child.Name:match("^Footstep") then
@@ -235,6 +246,9 @@ return function(Client)
 
 	function FootstepsSetup:Init()
 		FootstepsSetup:Setup()
+		player.CharacterAdded:Connect(function()
+			FootstepsSetup.Respawn()
+		end)
 	end
 
 	function FootstepsSetup.Respawn()
