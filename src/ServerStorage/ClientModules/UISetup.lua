@@ -446,6 +446,52 @@ return function(Client)
 		local postureShakeBaseOffset = nil
 		local POSTURE_SHAKE_THRESHOLD = 0.7
 
+		local POSTURE_SPEC_COUNT = 8
+		local lastSpecBar = nil
+		local postureSpecs = {}
+
+		local function setupPostureSpecs(postBar)
+			if lastSpecBar == postBar then return end
+			lastSpecBar = postBar
+			postureSpecs = {}
+
+			postBar.ClipsDescendants = true
+
+			for i = 1, POSTURE_SPEC_COUNT do
+				local spec = Instance.new("Frame")
+				spec.Name = "Spec" .. i
+				spec.Size = UDim2.fromOffset(3, 3)
+				spec.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+				spec.BackgroundTransparency = 0.5
+				spec.BorderSizePixel = 0
+				spec.AnchorPoint = Vector2.new(0.5, 0.5)
+				spec.Position = UDim2.fromScale(math.random(), math.random())
+				spec.ZIndex = (postBar.ZIndex or 1) + 1
+				spec.Parent = postBar
+
+				local corner = Instance.new("UICorner")
+				corner.CornerRadius = UDim.new(1, 0)
+				corner.Parent = spec
+
+				table.insert(postureSpecs, spec)
+
+				task.spawn(function()
+					task.wait(math.random() * 1.5)
+					while spec.Parent do
+						local targetPos = UDim2.fromScale(math.random(), math.random())
+						local duration = 1.2 + math.random() * 1.6
+						local trans = 0.25 + math.random() * 0.5
+						local tween = TweenService:Create(spec, TweenInfo.new(duration, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {
+							Position = targetPos,
+							BackgroundTransparency = trans,
+						})
+						tween:Play()
+						task.wait(duration)
+					end
+				end)
+			end
+		end
+
 		local function stopPostureShake(BillUI)
 			if postureShakeConn then
 				postureShakeConn:Disconnect()
@@ -495,6 +541,8 @@ return function(Client)
 			local ratio = math.clamp(Posture / MaxPosture, 0, 1)
 			local Size = UDim2.fromScale(1, ratio)
 			TweenService:Create(postureBar, TweenInfo.new(0.3), { Size = Size }):Play()
+
+			setupPostureSpecs(postureBar)
 
 			if activeFlashTween then
 				activeFlashTween:Cancel()
