@@ -441,19 +441,94 @@ return function(Client)
 			updateDisplay()
 		end
 		
+		local activeFlashTween = nil
+		local postureShakeConn = nil
+		local postureShakeBaseOffset = nil
+		local POSTURE_SHAKE_THRESHOLD = 0.7
+
+		local function stopPostureShake(BillUI)
+			if postureShakeConn then
+				postureShakeConn:Disconnect()
+				postureShakeConn = nil
+			end
+			if BillUI and postureShakeBaseOffset then
+				BillUI.StudsOffset = postureShakeBaseOffset
+			end
+			postureShakeBaseOffset = nil
+		end
+
+		local function startPostureShake(BillUI, getIntensity)
+			if postureShakeConn then return end
+			postureShakeBaseOffset = BillUI.StudsOffset
+			local base = postureShakeBaseOffset
+			postureShakeConn = RunService.RenderStepped:Connect(function()
+				if not BillUI or not BillUI.Parent then
+					stopPostureShake(nil)
+					return
+				end
+				local intensity = getIntensity()
+				if intensity <= 0 then
+					BillUI.StudsOffset = base
+					return
+				end
+				local jx = (math.random() - 0.5) * 2 * intensity
+				local jy = (math.random() - 0.5) * 2 * intensity
+				BillUI.StudsOffset = base + Vector3.new(jx, jy, 0)
+			end)
+		end
+
 		local function UpdatePosture()
-			
-			local PostureAttach = Client.Entity.Character.HumanoidRootPart.PostureAttach
-			local BillUI = PostureAttach.BillboardGui
-			
-			if not player.Character or not player.Character:GetAttribute("Posture") then return end
+
+			if not player.Character or not Client.Entity or not Client.Entity.Character then return end
+			local hrp = Client.Entity.Character:FindFirstChild("HumanoidRootPart")
+			if not hrp then return end
+			local PostureAttach = hrp:FindFirstChild("PostureAttach")
+			if not PostureAttach then return end
+			local BillUI = PostureAttach:FindFirstChildOfClass("BillboardGui")
+			if not BillUI then return end
+
+			if not player.Character:GetAttribute("Posture") then return end
 			local postureBar = BillUI.PostureFrame.postBack.postBar
 			local postFlash = BillUI.PostureFrame.postFlash
 			local Posture, MaxPosture = player.Character:GetAttribute("Posture"), player.Character:GetAttribute("MaxPosture")
-			local Size = UDim2.fromScale(1, Posture/MaxPosture)
-			TweenService:Create(postureBar, TweenInfo.new(0.3),{Size = Size}):Play()
-			TweenService:Create(postFlash, TweenInfo.new(0.15, Enum.EasingStyle.Circular, Enum.EasingDirection.Out, 0, true, 0), {ImageTransparency = 0}):Play()
-			
+			if not MaxPosture or MaxPosture <= 0 then return end
+			local ratio = math.clamp(Posture / MaxPosture, 0, 1)
+			local Size = UDim2.fromScale(1, ratio)
+			TweenService:Create(postureBar, TweenInfo.new(0.3), { Size = Size }):Play()
+
+			if activeFlashTween then
+				activeFlashTween:Cancel()
+				activeFlashTween = nil
+			end
+			postFlash.ImageTransparency = 1
+			local flashTween = TweenService:Create(
+				postFlash,
+				TweenInfo.new(0.15, Enum.EasingStyle.Circular, Enum.EasingDirection.Out, 0, true, 0),
+				{ ImageTransparency = 0 }
+			)
+			activeFlashTween = flashTween
+			flashTween.Completed:Connect(function()
+				if activeFlashTween == flashTween then
+					activeFlashTween = nil
+				end
+				postFlash.ImageTransparency = 1
+			end)
+			flashTween:Play()
+
+			if ratio >= POSTURE_SHAKE_THRESHOLD then
+				startPostureShake(BillUI, function()
+					local p = player.Character and player.Character:GetAttribute("Posture") or 0
+					local m = player.Character and player.Character:GetAttribute("MaxPosture") or 1
+					if m <= 0 then return 0 end
+					local r = math.clamp(p / m, 0, 1)
+					if r < POSTURE_SHAKE_THRESHOLD then return 0 end
+					local t = (r - POSTURE_SHAKE_THRESHOLD) / (1 - POSTURE_SHAKE_THRESHOLD)
+					return 0.05 + t * 0.2
+				end)
+			else
+				stopPostureShake(BillUI)
+			end
+
 		end
 		
 		local function UpdateWill()
@@ -728,20 +803,32 @@ return function(Client)
 		
 		local PostureConn 
 		PostureConn = RunService.Heartbeat:Connect(function()
-			if not player.Character or not player.character.Parent then
+			if not player.Character or not player.Character.Parent then
 				PostureConn:Disconnect()
+				return
 			end
+			if not Client.Entity or not Client.Entity.Character then return end
+			local hrp = Client.Entity.Character:FindFirstChild("HumanoidRootPart")
+			if not hrp then return end
+			local PostureAttach = hrp:FindFirstChild("PostureAttach")
+			if not PostureAttach then return end
+			local BillUI = PostureAttach:FindFirstChildOfClass("BillboardGui")
+			if not BillUI then return end
 
 			local posture = player.Character:GetAttribute("Posture") or 0
-
 			local isBlocking = player.Character:GetAttribute("Blocking") or false
-	
-			local PostureAttach = Client.Entity.Character.HumanoidRootPart.PostureAttach
-			local BillUI = PostureAttach.BillboardGui
+
 			if posture ~= 0 or isBlocking then
 				BillUI.Enabled = true
 			else
 				BillUI.Enabled = false
+				if activeFlashTween then
+					activeFlashTween:Cancel()
+					activeFlashTween = nil
+				end
+				local postFlash = BillUI.PostureFrame and BillUI.PostureFrame:FindFirstChild("postFlash")
+				if postFlash then postFlash.ImageTransparency = 1 end
+				stopPostureShake(BillUI)
 			end
 		end)
 		
