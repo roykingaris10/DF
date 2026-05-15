@@ -12,9 +12,17 @@ return function(Client)
 	local fpsIcon = nil
 	local pingIcon = nil
 	local weatherIcon = nil
+	local cinematicIcon = nil
 	local frameSamples = {}
 	local FPS_WINDOW = 0.5
 	local connections = {}
+
+	local CINEMATIC_OFF_ID = "rbxassetid://82539336025746"
+	local CINEMATIC_ON_ID = "rbxassetid://91242966118129"
+	local CINEMATIC_TARGET_GUIS = { "HUD", "UI", "UITopbar" }
+	local cinematicEnabled = false
+	local cinematicSavedGuiState = {}
+	local cinematicSavedChat = nil
 
 	local WEATHER_EMOJI = {
 		Day = "☀",
@@ -142,6 +150,101 @@ return function(Client)
 		callMethod(icon, "setCaption", text)
 	end
 
+	local function setIconImage(icon, imageId)
+		if not icon then return end
+		if not callMethod(icon, "setImage", imageId) then
+			callMethod(icon, "setIcon", imageId)
+		end
+	end
+
+	local function applyCinematic(enabled)
+		local PlayerGui = player:FindFirstChildOfClass("PlayerGui")
+		if not PlayerGui then return end
+
+		if enabled then
+			cinematicSavedGuiState = {}
+			for _, name in ipairs(CINEMATIC_TARGET_GUIS) do
+				local gui = PlayerGui:FindFirstChild(name)
+				if gui and gui:IsA("ScreenGui") then
+					cinematicSavedGuiState[gui] = gui.Enabled
+					gui.Enabled = false
+				end
+			end
+
+			local StarterGui = game:GetService("StarterGui")
+			cinematicSavedChat = nil
+			pcall(function()
+				cinematicSavedChat = StarterGui:GetCoreGuiEnabled(Enum.CoreGuiType.Chat)
+				StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Chat, false)
+			end)
+		else
+			for gui, prevEnabled in pairs(cinematicSavedGuiState) do
+				if gui and gui.Parent then
+					gui.Enabled = prevEnabled
+				end
+			end
+			cinematicSavedGuiState = {}
+
+			if cinematicSavedChat ~= nil then
+				local StarterGui = game:GetService("StarterGui")
+				pcall(function()
+					StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Chat, cinematicSavedChat)
+				end)
+				cinematicSavedChat = nil
+			end
+		end
+	end
+
+	local function setupCinematic()
+		if not cinematicIcon then return end
+
+		setIconImage(cinematicIcon, CINEMATIC_OFF_ID)
+		setIconCaption(cinematicIcon, "Cinematic Mode")
+
+		local function syncIconVisual()
+			setIconImage(cinematicIcon, cinematicEnabled and CINEMATIC_ON_ID or CINEMATIC_OFF_ID)
+		end
+
+		local function toggle()
+			cinematicEnabled = not cinematicEnabled
+			local ok, err = pcall(applyCinematic, cinematicEnabled)
+			if not ok then
+				warn("[TopbarIcons] Cinematic toggle failed:", err)
+				cinematicEnabled = not cinematicEnabled
+			end
+			syncIconVisual()
+		end
+
+		local function tryConnect(signal, callback)
+			if not signal then return nil end
+			if typeof(signal) == "RBXScriptSignal" then
+				return signal:Connect(callback)
+			end
+			if type(signal) == "table" and type(signal.Connect) == "function" then
+				return signal:Connect(callback)
+			end
+			return nil
+		end
+
+		local hooked = false
+		for _, evtName in ipairs({ "selected", "deselected" }) do
+			local conn = tryConnect(cinematicIcon[evtName], function()
+				if (evtName == "selected") ~= cinematicEnabled then
+					toggle()
+				end
+			end)
+			if conn then
+				table.insert(connections, conn)
+				hooked = true
+			end
+		end
+
+		if not hooked then
+			local conn = tryConnect(cinematicIcon.activated or cinematicIcon.Activated, toggle)
+			if conn then table.insert(connections, conn) end
+		end
+	end
+
 	local function removeExampleIcons()
 		local ok, icons = pcall(function()
 			if Icon and type(Icon.getIcons) == "function" then
@@ -248,11 +351,15 @@ return function(Client)
 		local okW, weather = pcall(createIcon, "WeatherIcon", 3, "☀")
 		if okW then weatherIcon = weather end
 
+		local okC, cine = pcall(createIcon, "CinematicIcon", 4, "")
+		if okC then cinematicIcon = cine end
+
 		removeExampleIcons()
 
 		if fpsIcon then setupFPS() end
 		if pingIcon then setupPing() end
 		if weatherIcon then setupWeather() end
+		if cinematicIcon then setupCinematic() end
 	end
 
 	function TopbarIcons:Cleanup()
@@ -261,12 +368,17 @@ return function(Client)
 		end
 		connections = {}
 
-		for _, icon in ipairs({ fpsIcon, pingIcon, weatherIcon }) do
+		if cinematicEnabled then
+			pcall(applyCinematic, false)
+			cinematicEnabled = false
+		end
+
+		for _, icon in ipairs({ fpsIcon, pingIcon, weatherIcon, cinematicIcon }) do
 			if icon then
 				pcall(function() icon:destroy() end)
 			end
 		end
-		fpsIcon, pingIcon, weatherIcon = nil, nil, nil
+		fpsIcon, pingIcon, weatherIcon, cinematicIcon = nil, nil, nil, nil
 	end
 
 	return TopbarIcons
