@@ -254,7 +254,12 @@ return function(Client)
 		end)
 		if not ok or type(icons) ~= "table" then return end
 		for _, existing in pairs(icons) do
-			if existing and existing ~= fpsIcon and existing ~= pingIcon and existing ~= weatherIcon then
+			if existing
+				and existing ~= fpsIcon
+				and existing ~= pingIcon
+				and existing ~= weatherIcon
+				and existing ~= cinematicIcon
+			then
 				pcall(function() existing:destroy() end)
 			end
 		end
