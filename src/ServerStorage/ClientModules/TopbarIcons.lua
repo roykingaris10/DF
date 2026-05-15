@@ -17,8 +17,8 @@ return function(Client)
 	local FPS_WINDOW = 0.5
 	local connections = {}
 
-	local CINEMATIC_OFF_ID = "rbxassetid://82539336025746"
-	local CINEMATIC_ON_ID = "rbxassetid://91242966118129"
+	local CINEMATIC_OFF_ID = "rbxassetid://92389470242469"
+	local CINEMATIC_ON_ID = "rbxassetid://126080037118931"
 	local CINEMATIC_TARGET_GUIS = { "HUD", "UI", "UITopbar" }
 	local cinematicEnabled = false
 	local cinematicSavedGuiState = {}
