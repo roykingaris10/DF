@@ -9,38 +9,38 @@ return function(Client)
 	local ReplicatedStorage = game:WaitForChild("ReplicatedStorage")
 	local MarketplaceService = game:GetService("MarketplaceService")
 	local RunService = game:GetService("RunService")
-	
+
 	local Kits = ReplicatedStorage.Kits
 	local Nodes = Kits.Nodes
-	
+
 	local BoatTween = require(Nodes.Utility.BoatTween)
 	local EnhancedTypewriter = require(Nodes.Utility.EnhancedTypewriter)
 	local CombatPhrases = require(Nodes.Data.CombatTagPhrases)
 	local GameSettings = require(Nodes.Data.GameSettings)
 	local PlayerGui = player:WaitForChild('PlayerGui')
 	local UI = PlayerGui:WaitForChild("UI")
-	
+
 	local AudioDirector = require(ReplicatedStorage.Kits.Audio.AudioDirector)
 	local CrewController = require(Nodes.Gameplay.CrewController)(Client)
-	
+
 
 	function UISetup:SetupTopInfo()
 		local UITop = PlayerGui:WaitForChild("UITopbar")
 		local InfoFrame = UITop.InfoFrame
-		
+
 		local FullName = player.StatFolder.UserFolder:GetAttribute("FirstName").." ".. (player.StatFolder.UserFolder:GetAttribute("MiddleName").." " or " ")..player.StatFolder.UserFolder:GetAttribute("LastName")
 		InfoFrame.Info1.SlotName.Text = (FullName):upper()
-		
+
 		InfoFrame.Info1.PlayerNameID.Text =	(player.Name.." | "..player.UserId):upper()
-		
+
 		task.spawn(function()
-			repeat 
+			repeat
 				task.wait(0.1)
 			until workspace:GetAttribute("RegionInfo")
-			
+
 			InfoFrame.Info2.ServerRegion.Text = (workspace:GetAttribute("RegionInfo")):upper()
 		end)
-		
+
 		task.spawn(function()
 			repeat
 				local totalSecs = workspace.DistributedGameTime
@@ -56,14 +56,14 @@ return function(Client)
 				task.wait(60)
 			until false
 		end)
-		
+
 	end
-	
+
 --[[	function UISetup:SetupFaceViewport()
 		local viewport = PlayerGui.HUD.PartyHolder.partyFrame.partyInfo.inner.playerView
-		if not viewport then 
+		if not viewport then
 			warn("[UISetup] parentView not found")
-			return 
+			return
 		end
 
 		local jogoChar = workspace:FindFirstChild("Jogo")
@@ -153,7 +153,7 @@ return function(Client)
 
 		print("[UISetup] Face viewport setup complete")
 	end]]
-	
+
 	function UISetup:CDTest()
 		local CooldownHolder = PlayerGui.HUD.PartyHolder.partyFrame.partyInfo.CDHolder
 		local F1 = CooldownHolder.Frame1.ImageLabel
@@ -250,12 +250,12 @@ return function(Client)
 			end
 		end)
 	end
-	
+
 	function UISetup:SetupHUD()
 		local HUDUI = PlayerGui:WaitForChild("HUD")
 		local UI = PlayerGui:WaitForChild("UI")
 		local HUDHolder = HUDUI.HUDHolder
-		
+
 		local function UpdateHealth()
 			if not player.Character or not player.Character:GetAttribute("Health") then return end
 			local HealthBack = HUDHolder.HealthBack
@@ -265,33 +265,33 @@ return function(Client)
 			local Size = UDim2.fromScale(Health/MaxHealth, 1)
 
 			TweenService:Create(HealthMain, TweenInfo.new(0.1, Enum.EasingStyle.Quart),{Size = Size}):Play()
-			
-			local healthEffect = TweenService:Create(Red, TweenInfo.new(.35, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out, 0, false, .01), 
+
+			local healthEffect = TweenService:Create(Red, TweenInfo.new(.35, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out, 0, false, .01),
 				{Size = Size,
 					BackgroundColor3 = Color3.fromRGB(255, 0, 55),
 				})
 
 			healthEffect:Play()
 			task.wait(0.45)
-		
-			local healthReturn = TweenService:Create(Red, TweenInfo.new(.1, Enum.EasingStyle.Exponential), 
+
+			local healthReturn = TweenService:Create(Red, TweenInfo.new(.1, Enum.EasingStyle.Exponential),
 				{BackgroundColor3 = Color3.fromRGB(255, 134, 134),
 				})
 
-			healthReturn:Play()		
+			healthReturn:Play()
 		end
-		
+
 		local function TweenInsert(UI)
 			UI.Visible = true
-			local FirstTween = TweenService:Create(UI, TweenInfo.new(.3, 
-				Enum.EasingStyle.Quart, 
+			local FirstTween = TweenService:Create(UI, TweenInfo.new(.3,
+				Enum.EasingStyle.Quart,
 				Enum.EasingDirection.Out, 0, false, 0),
 				{ImageTransparency = 0}) FirstTween:Play()
 			FirstTween.Completed:Connect(function()
 				TweenService:Create(UI, TweenInfo.new(.6, Enum.EasingStyle.Exponential), {ImageTransparency = 1}):Play()
 			end)
 		end
-		
+
 		local function setupBeliAnimation()
 			local TweenService = game:GetService("TweenService")
 			local RunService = game:GetService("RunService")
@@ -309,7 +309,7 @@ return function(Client)
 			local function formatNumber(num)
 				local formatted = tostring(math.floor(num))
 				local k
-				while true do  
+				while true do
 					formatted, k = string.gsub(formatted, "^(-?%d+)(%d%d%d)", '%1,%2')
 					if k == 0 then break end
 				end
@@ -419,13 +419,13 @@ return function(Client)
 				local beli = player.StatFolder.UserFolder:GetAttribute("Beli")
 				ValueLabel.Text = formatNumber(beli)
 			end
-			
+
 			--[[local function playerName()
 				local FullName = player.StatFolder.UserFolder:GetAttribute("FirstName").." ".. (player.StatFolder.UserFolder:GetAttribute("MiddleName").." " or " ")..player.StatFolder.UserFolder:GetAttribute("LastName")
 				UI.PlayerNameFrame.value.Text = FullName:upper()
 				UI.PlayerNameFrame.Visible = true
 			end
-			
+
 			playerName()]]
 
 			Network:bindEvent("BeliUpdate", function(oldBeli, newBeli, cost)
@@ -440,7 +440,7 @@ return function(Client)
 
 			updateDisplay()
 		end
-		
+
 		local activeFlashTween = nil
 		local postureShakeConn = nil
 		local postureShakeBaseOffset = nil
@@ -530,9 +530,9 @@ return function(Client)
 			end
 
 		end
-		
+
 		local function UpdateWill()
-			
+
 			local willBorder = PlayerGui:WaitForChild("HUD").HUDHolder.willBorder
 			if not player.Character or not player.Character:GetAttribute("Will") then return end
 
@@ -552,9 +552,9 @@ return function(Client)
 
 			TweenService:Create(willBar, TweenInfo.new(0.3), {Size = Size}):Play()
 		end
-		
 
-		
+
+
 
 		local function UpdateStamina()
 			if not player.Character or not player.Character:GetAttribute("Stamina") then return end
@@ -563,15 +563,15 @@ return function(Client)
 			local Size = UDim2.fromScale(Stamina/MaxStamina, 1)
 
 			TweenService:Create(staminaBar, TweenInfo.new(0.3),{Size = Size}):Play()
-		--	staminaBar.Text = tostring(math.floor(Stamina)).."%"
+			--	staminaBar.Text = tostring(math.floor(Stamina)).."%"
 		end
- 
- 
+
+
 		local MAX_HUNGER = 100
 		local HUNGER_PER_ICON = 10  -- Each icon represents 10 hunger
-		local TOTAL_ICONS = 10     
-		local HALF_HUNGER = 5 
-		
+		local TOTAL_ICONS = 10
+		local HALF_HUNGER = 5
+
 		local function UpdateHunger()
 			if not player.Character or not player.Character:GetAttribute("Hunger") then return end
 
@@ -589,12 +589,12 @@ return function(Client)
 					end
 				end
 			end
-			
+
 			local function ConvertHungerToIconStates(hunger)
 				hunger = math.clamp(hunger, 0, MAX_HUNGER)
 
 				local fullIcons = math.floor(hunger / 10)
-				local remainingHunger = hunger % 10 
+				local remainingHunger = hunger % 10
 				local hasHalfIcon = false
 				if remainingHunger >= 5 then
 					hasHalfIcon = true
@@ -606,7 +606,7 @@ return function(Client)
 					emptyIcons = TOTAL_ICONS - fullIcons - (hasHalfIcon and 1 or 0)
 				}
 			end
-			
+
 			local function UpdateFoodIcon(iconIndex, iconState)
 				local icon = FoodIcons[iconIndex]
 				if not icon then return end
@@ -646,14 +646,14 @@ return function(Client)
 
 				-- Debug output
 				--[[
-				print(string.format("Hunger: %d -> Full: %d, Half: %s, Empty: %d", 
-					currentHunger, 
-					iconStates.fullIcons, 
-					tostring(iconStates.hasHalfIcon), 
+				print(string.format("Hunger: %d -> Full: %d, Half: %s, Empty: %d",
+					currentHunger,
+					iconStates.fullIcons,
+					tostring(iconStates.hasHalfIcon),
 					iconStates.emptyIcons
 					))
 ]]
-			
+
 				local currentIcon = TOTAL_ICONS
 
 				for i = 1, iconStates.emptyIcons do
@@ -662,7 +662,7 @@ return function(Client)
 						currentIcon = currentIcon - 1
 					end
 				end
-				
+
 				if iconStates.hasHalfIcon and currentIcon >= 1 then
 					UpdateFoodIcon(currentIcon, "half")
 					currentIcon = currentIcon - 1
@@ -677,14 +677,14 @@ return function(Client)
 			end
 			UpdateHungerBar()
 		end
-		
+
 		local function triggerCombatUIEffect(CombatFrame)
 			CombatFrame.glasses.UIGradient.Offset = Vector2.new(-0.1,0)
-			
+
 			local gradtween = TweenService:Create(CombatFrame.glasses.UIGradient,TweenInfo.new(0.5),{Offset = Vector2.new(0.1,0)})
 			gradtween:Play()
 		end
-		
+
 		local combathover = false
 		local CombatTagged = false
 		local CountdownActive = false
@@ -697,7 +697,7 @@ return function(Client)
 			local currentTag = player.Character:GetAttribute("InCombatTick") or 0
 			local CombatFrame = UI.InCombatFrame
 			local combatMusic = ReplicatedStorage.Kits.Sounds.Combat:FindFirstChild("CombatMusic")
-			
+
 			local timeSinceTag = currentTick - currentTag
 			local timeRemaining = math.max(0, GameSettings.InCombatDuration - timeSinceTag)
 
@@ -708,7 +708,7 @@ return function(Client)
 				CombatTagged = true
 				CombatFrame.combatText.Text = CombatPhrases[math.random(1, #CombatPhrases)]
 				CombatFrame.Visible = true
-				
+
 				local musicClone = combatMusic:Clone()
 
 				-- When combat starts
@@ -716,7 +716,7 @@ return function(Client)
 				musicClone.Volume = 1
 				AudioDirector:StartCombat(false)
 				--musicClone:Play()
-				
+
 				coroutine.wrap(function()
 					while CombatTagged and player.Character do
 						local currentTime = tick()
@@ -753,22 +753,22 @@ return function(Client)
 						end
 					end
 				end)()
-			
-			--	repeat task.wait(0.1)  until currentTick - currentTag > GameSettings.InCombatDuration
-				
-			--	CombatFrame.Visible = false
+
+				--	repeat task.wait(0.1)  until currentTick - currentTag > GameSettings.InCombatDuration
+
+				--	CombatFrame.Visible = false
 			elseif CombatTagged and not isInCombat then
 				CombatTagged = false
 				CombatFrame.Visible = false
 				UI.InCombatFrame.timer.Visible = false
 			end
 		end
-		
-	--	local function UpdateBeli()
-	--		local beliFrame = HUDUI.Beli
-	--		beliFrame.Value.Text = tostring(player.StatFolder.UserFolder:GetAttribute("Beli"))
-	--	end
-		
+
+		--	local function UpdateBeli()
+		--		local beliFrame = HUDUI.Beli
+		--		beliFrame.Value.Text = tostring(player.StatFolder.UserFolder:GetAttribute("Beli"))
+		--	end
+
 		UpdateHealth()
 		UpdateWill()
 		UpdateStamina()
@@ -799,9 +799,9 @@ return function(Client)
 
 		bindStatSignals(player.Character)
 		player.CharacterAdded:Connect(bindStatSignals)
-	--	player.StatFolder.UserFolder:GetAttributeChangedSignal("Beli"):Connect(UpdateBeli)
-		
-		local PostureConn 
+		--	player.StatFolder.UserFolder:GetAttributeChangedSignal("Beli"):Connect(UpdateBeli)
+
+		local PostureConn
 		PostureConn = RunService.Heartbeat:Connect(function()
 			if not player.Character or not player.Character.Parent then
 				PostureConn:Disconnect()
@@ -831,7 +831,7 @@ return function(Client)
 				stopPostureShake(BillUI)
 			end
 		end)
-		
+
 		local combathover = false
 		UI.InCombatFrame.MouseEnter:Connect(function()
 			if not CombatTagged then return end
@@ -866,13 +866,13 @@ return function(Client)
 				UI.InCombatFrame.timer.Visible = false
 			end)()
 		end)
-		
+
 		UI.InCombatFrame.MouseLeave:Connect(function()
 			combathover = false
 		end)
-		
+
 	end
-	
+
 	local opencore = false
 	local coreTweens = {}
 	function UISetup:ToggleCoreMenu()
@@ -913,7 +913,7 @@ return function(Client)
 	function UISetup:CloseCoreMenu()
 		if opencore then self:ToggleCoreMenu() end
 	end
-	
+
 	local pingDisplay = UI:WaitForChild("pingDisplay")
 
 	local pingText = player.PlayerGui.UITopbar.InfoFrame.PingFPS.Ping
@@ -929,14 +929,14 @@ return function(Client)
 						Network:get('Ping')
 						local ping = math.floor((tick() - initialTick) * 1000)
 						pingText.Text = (ping)
-							if ping < 70 then
+						if ping < 70 then
 							TweenService:Create(pingText, TweenInfo.new(1), {TextColor3 = Color3.new(0.333333, 1, 0.498039)}):Play()
-							elseif ping > 110 then
+						elseif ping > 110 then
 							TweenService:Create(pingText, TweenInfo.new(1), {TextColor3 = Color3.new(1, 0, 0)}):Play()
-							elseif ping > 80 then
+						elseif ping > 80 then
 							TweenService:Create(pingText, TweenInfo.new(1), {TextColor3 = Color3.new(1, 0.666667, 0)}):Play()
 
-							end
+						end
 					end
 				end)
 				counter += 1
@@ -944,7 +944,7 @@ return function(Client)
 		end)
 
 	end
-	
+
 	local function FPS()
 		local FrameElements = {}
 		local lastTick, initTick
@@ -965,14 +965,14 @@ return function(Client)
 	FPS()
 
 	function UISetup:Init()
-		
-		
+
+
 		local Character = player.Character
 		local RootPart = Character.HumanoidRootPart
 		local Sound = RootPart:WaitForChild("Running", 10)
 
 		Sound.Volume = 0
-		
+
 		local HUDUI = PlayerGui:WaitForChild("HUD")
 		local UI = PlayerGui:WaitForChild("UI")
 		local HUDHolder = HUDUI.HUDHolder
@@ -983,10 +983,6 @@ return function(Client)
 		--UISetup:CDTest()
 		Client.ProfileClient:SetupProfile()
 	end
-	
-	
+
+
 	return UISetup end
-
-	
-
-
