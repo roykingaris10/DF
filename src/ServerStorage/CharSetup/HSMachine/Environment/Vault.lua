@@ -96,7 +96,12 @@ return function(Client)
 	local function buildRayParams(character)
 		local rp = RaycastParams.new()
 		rp.FilterType = Enum.RaycastFilterType.Exclude
-		rp.FilterDescendantsInstances = {character, workspace.CurrentCamera}
+		local exclude = { character, workspace.CurrentCamera }
+		local effectsFolder = workspace:FindFirstChild("EffectsFolder")
+		if effectsFolder then
+			table.insert(exclude, effectsFolder)
+		end
+		rp.FilterDescendantsInstances = exclude
 		rp.IgnoreWater = true
 		return rp
 	end
