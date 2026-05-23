@@ -217,6 +217,14 @@ function Entities.Find(Inst: (Player | Model))
 	end;
 end;
 
+Network:bindEvent("InnerDialogueSeen", function(player)
+	if not player then return end
+	local entity = Entities.Find(player)
+	if not entity or not entity.SlotProfile then return end
+	entity.SlotProfile.HasSeenInnerDialogue = true
+	player:SetAttribute("PendingInnerDialogue", nil)
+end)
+
 
 return Entities;
 

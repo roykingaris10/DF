@@ -423,6 +423,23 @@ function StatManager:PlayerSetup()
 	self:SetupSettingsAttr()
 	self:SetupStatisticsAttr()
 	self:SetupPlayerAttr()
+	self:SetupInnerDialogue()
+end
+
+function StatManager:SetupInnerDialogue()
+	if self.SlotProfile.HasSeenInnerDialogue then return end
+	local dreamTrait = self.SlotProfile.UserData.DreamTrait
+	if not dreamTrait then return end
+
+	local ok, InnerDialogue = pcall(function()
+		return require(game:GetService("ReplicatedStorage").Kits.InnerDialogue)
+	end)
+	if not ok or not InnerDialogue then return end
+
+	local text = InnerDialogue:Get(dreamTrait)
+	if not text then return end
+
+	self.Parent.player:SetAttribute("PendingInnerDialogue", text)
 end
 
 function StatManager:SetupSettingsAttr()

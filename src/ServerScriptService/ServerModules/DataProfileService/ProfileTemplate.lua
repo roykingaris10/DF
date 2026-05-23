@@ -35,6 +35,7 @@ local ProfileTemplate = {
 		SlotTemplate = {
 			Finalized = false,
 			FirstRaceRolled = false,
+			HasSeenInnerDialogue = false,
 			UserData = {
 				FirstName = nil, 
 				MiddleName = nil,
