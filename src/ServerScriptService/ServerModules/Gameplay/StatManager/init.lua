@@ -461,7 +461,11 @@ function StatManager:SetupPlayerAttr()
 	local UserFolder = self.Parent.player.StatFolder.UserFolder
 	
 	if self.SlotProfile.UserData.WillColor == nil then
-		local randomColor = Color3.fromHSV(math.random(), 0.8, 1)
+		local rng = Random.new(os.clock() * 1e9 + tick() * 1e6)
+		local h = rng:NextNumber(0, 1)
+		local s = rng:NextNumber(0.55, 1)
+		local v = rng:NextNumber(0.7, 1)
+		local randomColor = Color3.fromHSV(h, s, v)
 		self.SlotProfile.UserData.WillColor = {randomColor.R, randomColor.G, randomColor.B}
 	end
 
