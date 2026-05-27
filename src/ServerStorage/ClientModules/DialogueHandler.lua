@@ -61,6 +61,50 @@ return function(Client)
 		return hint
 	end
 
+	local TYPE_FADE_TI = TweenInfo.new(0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+
+	local function plainLength(richText)
+		local stripped = (richText:gsub("<[^>]+>", ""))
+		return utf8.len(stripped) or #stripped
+	end
+
+	local function runTypewriter(label, richText, state)
+		if not label or not label:IsA("TextLabel") then return end
+
+		label.RichText = true
+		label.Text = richText
+		label.MaxVisibleGraphemes = 0
+		label.TextTransparency = 1
+
+		TweenService:Create(label, TYPE_FADE_TI, { TextTransparency = 0 }):Play()
+		local stroke = label:FindFirstChildOfClass("UIStroke")
+		if stroke then
+			TweenService:Create(stroke, TYPE_FADE_TI, { Transparency = 0.5 }):Play()
+		end
+
+		local total = plainLength(richText)
+		local plain = (richText:gsub("<[^>]+>", ""))
+		local i = 0
+		while i < total do
+			if state.skip then
+				label.MaxVisibleGraphemes = total
+				return
+			end
+			i += 1
+			label.MaxVisibleGraphemes = i
+
+			local char = plain:sub(i, i)
+			local d
+			if char == "." or char == "!" then d = 0.28
+			elseif char == "?" then d = 0.35
+			elseif char == "," or char == ";" then d = 0.16
+			elseif char == " " then d = 0.04
+			else d = 0.035
+			end
+			task.wait(d)
+		end
+	end
+
 	local FactionController = require(Nodes.Gameplay.FactionController)(Client)
 
 	local function resetChoices(choiceHolder)
@@ -95,8 +139,8 @@ return function(Client)
 	end
 
 	local function interactopen()
-		if DialogueHandler.interactState == "open" or DialogueHandler.interactState == "opening" then 
-			return 
+		if DialogueHandler.interactState == "open" or DialogueHandler.interactState == "opening" then
+			return
 		end
 
 		if not canChangeState() then return end
@@ -157,8 +201,8 @@ return function(Client)
 	end
 
 	local function interactclose()
-		if DialogueHandler.interactState == "closed" or DialogueHandler.interactState == "closing" then 
-			return 
+		if DialogueHandler.interactState == "closed" or DialogueHandler.interactState == "closing" then
+			return
 		end
 
 		if not canChangeState() then return end
@@ -280,7 +324,7 @@ return function(Client)
 
 		dialogueUI.Visible = false
 		DialogueHandler.inDialogue = false
-		
+
 		if Client.CompassController then
 			Client.CompassController.Open()
 		end
@@ -490,17 +534,35 @@ return function(Client)
 
 				for lineNum, lineText in ipairs(currentDialogue.Text) do
 					DialogueHandler.mouseClicked = false
-					npcText.TextTransparency = 1
-					npcText.Text = applyMarkup(lineText)
 					playLineSound()
-					TweenService:Create(npcText, TweenInfo.new(0.5), { TextTransparency = 0 }):Play()
+
+					local typeState = { skip = false }
+					local typing = true
+
+					task.spawn(function()
+						runTypewriter(npcText, applyMarkup(lineText), typeState)
+						typing = false
+					end)
+
+					task.spawn(function()
+						while typing do
+							if DialogueHandler.mouseClicked then
+								typeState.skip = true
+								DialogueHandler.mouseClicked = false
+								break
+							end
+							task.wait()
+						end
+					end)
+
+					while typing do task.wait() end
 
 					if lineNum == #currentDialogue.Text and currentDialogue.Choices then
 						task.wait(0.3)
 						break
 					end
 
-					task.wait(0.2)
+					task.wait(0.15)
 
 					continueHint.Visible = true
 					continueHint.TextTransparency = 1
