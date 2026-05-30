@@ -56,10 +56,18 @@ return function(Client)
 	local activeViewportConn = nil
 
 	local function setupNPCViewport(dialogueUI, NPC)
-		local dialogueBox = dialogueUI:FindFirstChild("DialogueBox")
-		if not dialogueBox then return end
+		local dialogueFolder = dialogueUI and dialogueUI.Parent
+		local dialogueBox = dialogueFolder and dialogueFolder:FindFirstChild("DialogueBox")
+			or (dialogueUI and dialogueUI:FindFirstChild("DialogueBox"))
+		if not dialogueBox then
+			warn("[DialogueHandler] DialogueBox not found")
+			return
+		end
 		local viewportHolder = dialogueBox:FindFirstChild("ViewportFrame")
-		if not viewportHolder then return end
+		if not viewportHolder then
+			warn("[DialogueHandler] DialogueBox.ViewportFrame not found")
+			return
+		end
 		local target = viewportHolder:FindFirstChild("NPCViewport") or viewportHolder
 		if not target:IsA("ViewportFrame") then
 			warn("[DialogueHandler] NPCViewport is not a ViewportFrame:", target.ClassName)
@@ -137,7 +145,9 @@ return function(Client)
 			activeViewportConn:Disconnect()
 			activeViewportConn = nil
 		end
-		local dialogueBox = dialogueUI and dialogueUI:FindFirstChild("DialogueBox")
+		local dialogueFolder = dialogueUI and dialogueUI.Parent
+		local dialogueBox = (dialogueFolder and dialogueFolder:FindFirstChild("DialogueBox"))
+			or (dialogueUI and dialogueUI:FindFirstChild("DialogueBox"))
 		if not dialogueBox then return end
 		local viewportHolder = dialogueBox:FindFirstChild("ViewportFrame")
 		if not viewportHolder then return end
