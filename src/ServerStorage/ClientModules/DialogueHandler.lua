@@ -56,11 +56,14 @@ return function(Client)
 	local function setupNPCViewport(dialogueUI, NPC)
 		local dialogueBox = dialogueUI:FindFirstChild("DialogueBox")
 		if not dialogueBox then return end
-		local viewportFrame = dialogueBox:FindFirstChild("ViewportFrame")
-		if not viewportFrame then return end
-		local target = viewportFrame:FindFirstChild("NPCViewport")
-		if not target or not target:IsA("ViewportFrame") then target = viewportFrame end
-		if not target:IsA("ViewportFrame") then return end
+		local viewportHolder = dialogueBox:FindFirstChild("ViewportFrame")
+		if not viewportHolder then return end
+		local target = viewportHolder:FindFirstChild("NPCViewport")
+		if not target then target = viewportHolder end
+		if not target:IsA("ViewportFrame") then
+			warn("[DialogueHandler] NPCViewport is not a ViewportFrame, got", target.ClassName)
+			return
+		end
 
 		for _, child in ipairs(target:GetChildren()) do
 			if child:IsA("Model") or child:IsA("Camera") or child:IsA("WorldModel") then
@@ -68,47 +71,57 @@ return function(Client)
 			end
 		end
 
+		target.Ambient        = Color3.new(1, 1, 1)
+		target.LightColor     = Color3.new(1, 1, 1)
+		target.LightDirection = Vector3.new(0, -1, -0.5)
+
 		local worldModel = Instance.new("WorldModel")
 		worldModel.Parent = target
 
 		local model = NPC:Clone()
 		for _, p in ipairs(model:GetDescendants()) do
 			if p:IsA("BasePart") then
-				p.Anchored = false
+				p.Anchored = true
 				p.CanCollide = false
-				p.Massless = true
 			end
 			if p:IsA("ProximityPrompt") or p:IsA("Highlight") or p:IsA("BillboardGui") then
 				p:Destroy()
 			end
 		end
 		model.Parent = worldModel
-		model:PivotTo(CFrame.new(0, 0, 0))
 
-		local hrp = model:FindFirstChild("HumanoidRootPart") or model.PrimaryPart
+		local pivotCF = model:GetPivot()
+		model:PivotTo(CFrame.new(0, 0, 0) * (pivotCF - pivotCF.Position).Inverse())
+
+		local cf, size = model:GetBoundingBox()
+		local center = cf.Position
+		local dist = math.max(size.X, size.Y, size.Z) * 1.6
+
+		local hrp = model:FindFirstChild("HumanoidRootPart")
 		local head = model:FindFirstChild("Head")
+		local focus = (head and head.Position) or center
 		local cam = Instance.new("Camera")
-		cam.FieldOfView = 28
-		if head then
-			local focus = head.Position + Vector3.new(0, -0.4, 0)
-			local pos   = head.Position + Vector3.new(0, 0.3, 5)
-			cam.CFrame = CFrame.lookAt(pos, focus)
-		elseif hrp then
-			cam.CFrame = CFrame.lookAt(hrp.Position + Vector3.new(0, 2, 5), hrp.Position + Vector3.new(0, 1.5, 0))
-		end
+		cam.FieldOfView = 35
+		cam.CFrame = CFrame.lookAt(focus + Vector3.new(0, 0.4, dist), focus + Vector3.new(0, -0.3, 0))
 		cam.Parent = target
 		target.CurrentCamera = cam
+
+		print(("[DialogueHandler] viewport set up for %s — parts=%d size=%s dist=%.1f"):format(
+			NPC.Name,
+			#model:GetDescendants(),
+			tostring(size),
+			dist
+		))
 
 		local humanoid = model:FindFirstChildOfClass("Humanoid")
 		if humanoid then
 			humanoid.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
-			humanoid.PlatformStand = false
-			humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
-			local animator = humanoid:FindFirstChildOfClass("Animator") or Instance.new("Animator", humanoid)
-			for _, t in ipairs(animator:GetPlayingAnimationTracks()) do t:Stop() end
+			for _, p in ipairs(model:GetDescendants()) do
+				if p:IsA("BasePart") then p.Anchored = false end
+			end
 			task.spawn(function()
-				task.wait(0.15)
-				if not model.Parent then return end
+				local animator = humanoid:FindFirstChildOfClass("Animator") or Instance.new("Animator", humanoid)
+				for _, t in ipairs(animator:GetPlayingAnimationTracks()) do t:Stop() end
 				local anim = Instance.new("Animation")
 				anim.AnimationId = IDLE_ANIM_ID
 				local ok, track = pcall(function() return animator:LoadAnimation(anim) end)
@@ -208,11 +221,11 @@ return function(Client)
 			end
 
 			local d
-			if char == "." or char == "!" then d = 0.20
-			elseif char == "?" then d = 0.26
-			elseif char == "," or char == ";" then d = 0.11
-			elseif char == " " then d = 0.025
-			else d = 0.022
+			if char == "." or char == "!" then d = 0.24
+			elseif char == "?" then d = 0.30
+			elseif char == "," or char == ";" then d = 0.13
+			elseif char == " " then d = 0.032
+			else d = 0.028
 			end
 			task.wait(d)
 		end
