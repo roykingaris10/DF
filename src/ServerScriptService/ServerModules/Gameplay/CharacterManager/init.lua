@@ -146,6 +146,25 @@ function Characters:Create(NoPositioning: boolean?)
 	self.Humanoid.UseJumpPower = true;
 	self.Humanoid.AutomaticScalingEnabled = false
 	self.Humanoid.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
+
+	if self.Parent.player and self.SlotProfile and self.SlotProfile.UserData then
+		local ud = self.SlotProfile.UserData
+		local f = ud.FirstName or ""
+		local m = ud.MiddleName
+		local l = ud.LastName or ""
+		local fullName
+		if m and m ~= "" then
+			fullName = f .. " " .. m .. " " .. l
+		else
+			fullName = f .. " " .. l
+		end
+		fullName = (fullName:gsub("^%s+", ""):gsub("%s+$", ""))
+		if fullName ~= "" then
+			self.Humanoid.DisplayName = fullName
+			self.Humanoid.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.Viewer
+			self.Humanoid.NameDisplayDistance = 100
+		end
+	end
 	
 	self.Parent.Animator:Cache();
 	if self.Parent.player then
