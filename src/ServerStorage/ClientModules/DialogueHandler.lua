@@ -130,12 +130,13 @@ return function(Client)
 	end
 
 	local function setDialogueCombatBlock(active)
-		if player.Character then
-			player.Character:SetAttribute("InDialogue", active and true or nil)
+		local flag = active and true or false
+		if Client.Entity and Client.Entity.CombatData then
+			Client.Entity.CombatData.InDialogue = flag
 		end
-		pcall(function()
-			Network:get("DialogueAction", "SetCombatBlock", { active = active and true or false })
-		end)
+		if player.Character then
+			player.Character:SetAttribute("InDialogue", flag or nil)
+		end
 	end
 
 	local function ensureContinueHint(dialogueUI)

@@ -189,6 +189,7 @@ return function(Client)
 
 			local Character = player.Character;
 			if not Character then return end;
+			if Client.Entity and Client.Entity.CombatData and Client.Entity.CombatData.InDialogue then return end;
 			
 			local function checkInAir()
 				if ((Client.Entity.Character.Humanoid:GetState() ~= Enum.HumanoidStateType.Freefall and Client.Entity.Character.Humanoid:GetState() ~= Enum.HumanoidStateType.Jumping)) and Client.Entity.Character.Humanoid.FloorMaterial ~= Enum.Material.Air then
@@ -228,6 +229,7 @@ return function(Client)
 			local Character = player.Character;
 			if not Character then return end;
 			if not Held then return end;
+			if Client.Entity and Client.Entity.CombatData and Client.Entity.CombatData.InDialogue then return end;
 			
 			if Character:GetAttribute("Blocking") then
 				if Character:GetAttribute("WillProc") and not Client.Entity.Cooldowns.cooldownData.WillEvasive then
@@ -250,6 +252,7 @@ return function(Client)
 
 			if not Character then return end;
 			if not Character:IsDescendantOf(workspace.Entities) then return end;
+			if Client.Entity and Client.Entity.CombatData and Client.Entity.CombatData.InDialogue then return end;
 			
 			Network:post("ServerEvent","Block",{Held = Held})
 			--[[
