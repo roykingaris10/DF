@@ -68,28 +68,33 @@ return function(Client)
 			end
 		end
 
+		local worldModel = Instance.new("WorldModel")
+		worldModel.Parent = target
+
 		local model = NPC:Clone()
 		for _, p in ipairs(model:GetDescendants()) do
 			if p:IsA("BasePart") then
 				p.Anchored = false
 				p.CanCollide = false
+				p.Massless = true
 			end
 			if p:IsA("ProximityPrompt") or p:IsA("Highlight") or p:IsA("BillboardGui") then
 				p:Destroy()
 			end
 		end
-		model.Parent = target
+		model.Parent = worldModel
+		model:PivotTo(CFrame.new(0, 0, 0))
 
 		local hrp = model:FindFirstChild("HumanoidRootPart") or model.PrimaryPart
 		local head = model:FindFirstChild("Head")
 		local cam = Instance.new("Camera")
 		cam.FieldOfView = 28
-		if head and hrp then
-			local focus = head.Position + Vector3.new(0, -0.5, 0)
-			local pos   = head.Position - hrp.CFrame.LookVector * 4 + Vector3.new(0, 0.4, 0)
+		if head then
+			local focus = head.Position + Vector3.new(0, -0.4, 0)
+			local pos   = head.Position + Vector3.new(0, 0.3, 5)
 			cam.CFrame = CFrame.lookAt(pos, focus)
 		elseif hrp then
-			cam.CFrame = CFrame.lookAt(hrp.Position - hrp.CFrame.LookVector * 4 + Vector3.new(0, 2.2, 0), hrp.Position + Vector3.new(0, 1.4, 0))
+			cam.CFrame = CFrame.lookAt(hrp.Position + Vector3.new(0, 2, 5), hrp.Position + Vector3.new(0, 1.5, 0))
 		end
 		cam.Parent = target
 		target.CurrentCamera = cam
@@ -97,6 +102,7 @@ return function(Client)
 		local humanoid = model:FindFirstChildOfClass("Humanoid")
 		if humanoid then
 			humanoid.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
+			humanoid.PlatformStand = false
 			humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
 			local animator = humanoid:FindFirstChildOfClass("Animator") or Instance.new("Animator", humanoid)
 			for _, t in ipairs(animator:GetPlayingAnimationTracks()) do t:Stop() end
@@ -110,7 +116,7 @@ return function(Client)
 					track.Looped = true
 					track.Priority = Enum.AnimationPriority.Idle
 					track:Play()
-					track:AdjustSpeed(0.75)
+					track:AdjustSpeed(0.7)
 				end
 			end)
 		end
@@ -168,20 +174,6 @@ return function(Client)
 		return utf8.len(stripped) or #stripped
 	end
 
-	local function ensurePulseScale(label)
-		local s = label:FindFirstChild("TypePulse")
-		if not s or not s:IsA("UIScale") then
-			if s then s:Destroy() end
-			s = Instance.new("UIScale")
-			s.Name = "TypePulse"
-			s.Scale = 1
-			s.Parent = label
-		end
-		return s
-	end
-
-	local LETTER_POP = TweenInfo.new(0.09, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-
 	local function runTypewriter(label, richText, state)
 		if not label or not label:IsA("TextLabel") then return end
 
@@ -190,8 +182,8 @@ return function(Client)
 		label.MaxVisibleGraphemes = 0
 		label.TextTransparency = 1
 
-		local scale = ensurePulseScale(label)
-		scale.Scale = 1
+		local stale = label:FindFirstChild("TypePulse")
+		if stale then stale:Destroy() end
 
 		TweenService:Create(label, TYPE_FADE_TI, { TextTransparency = 0 }):Play()
 		local stroke = label:FindFirstChildOfClass("UIStroke")
@@ -205,7 +197,6 @@ return function(Client)
 		while i < total do
 			if state.skip then
 				label.MaxVisibleGraphemes = total
-				scale.Scale = 1
 				return
 			end
 			i += 1
@@ -214,20 +205,17 @@ return function(Client)
 			local char = plain:sub(i, i)
 			if char ~= " " and char ~= "" then
 				playLetterSound()
-				scale.Scale = 1.09
-				TweenService:Create(scale, LETTER_POP, { Scale = 1 }):Play()
 			end
 
 			local d
-			if char == "." or char == "!" then d = 0.28
-			elseif char == "?" then d = 0.35
-			elseif char == "," or char == ";" then d = 0.16
-			elseif char == " " then d = 0.04
-			else d = 0.035
+			if char == "." or char == "!" then d = 0.20
+			elseif char == "?" then d = 0.26
+			elseif char == "," or char == ";" then d = 0.11
+			elseif char == " " then d = 0.025
+			else d = 0.022
 			end
 			task.wait(d)
 		end
-		scale.Scale = 1
 	end
 
 	local FactionController = require(Nodes.Gameplay.FactionController)(Client)
