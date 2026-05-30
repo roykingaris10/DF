@@ -53,96 +53,97 @@ return function(Client)
 
 	local IDLE_ANIM_ID = "rbxassetid://507766388"
 
+	local activeViewportConn = nil
+
 	local function setupNPCViewport(dialogueUI, NPC)
 		local dialogueBox = dialogueUI:FindFirstChild("DialogueBox")
 		if not dialogueBox then return end
 		local viewportHolder = dialogueBox:FindFirstChild("ViewportFrame")
 		if not viewportHolder then return end
-		local target = viewportHolder:FindFirstChild("NPCViewport")
-		if not target then target = viewportHolder end
+		local target = viewportHolder:FindFirstChild("NPCViewport") or viewportHolder
 		if not target:IsA("ViewportFrame") then
-			warn("[DialogueHandler] NPCViewport is not a ViewportFrame, got", target.ClassName)
+			warn("[DialogueHandler] NPCViewport is not a ViewportFrame:", target.ClassName)
 			return
 		end
 
+		if activeViewportConn then
+			activeViewportConn:Disconnect()
+			activeViewportConn = nil
+		end
 		for _, child in ipairs(target:GetChildren()) do
-			if child:IsA("Model") or child:IsA("Camera") or child:IsA("WorldModel") then
+			if child:IsA("Model") or child:IsA("BasePart") or child:IsA("Camera") or child:IsA("WorldModel") then
 				child:Destroy()
 			end
 		end
 
 		target.Ambient        = Color3.new(1, 1, 1)
 		target.LightColor     = Color3.new(1, 1, 1)
-		target.LightDirection = Vector3.new(0, -1, -0.5)
-
-		local worldModel = Instance.new("WorldModel")
-		worldModel.Parent = target
+		target.LightDirection = Vector3.new(0, -1, -0.4)
 
 		local model = NPC:Clone()
+
 		for _, p in ipairs(model:GetDescendants()) do
+			if p:IsA("ProximityPrompt")
+				or p:IsA("Highlight")
+				or p:IsA("BillboardGui")
+				or p:IsA("ParticleEmitter")
+				or p:IsA("Script")
+				or p:IsA("LocalScript") then
+				p:Destroy()
+			end
 			if p:IsA("BasePart") then
 				p.Anchored = true
 				p.CanCollide = false
 			end
-			if p:IsA("ProximityPrompt") or p:IsA("Highlight") or p:IsA("BillboardGui") then
-				p:Destroy()
-			end
 		end
-		model.Parent = worldModel
 
-		local pivotCF = model:GetPivot()
-		model:PivotTo(CFrame.new(0, 0, 0) * (pivotCF - pivotCF.Position).Inverse())
+		model:PivotTo(CFrame.new(0, 0, 0))
+		local basePivot = model:GetPivot()
+
+		model.Parent = target
+
+		print(("[DialogueHandler] viewport: %s, %d descendants"):format(NPC.Name, #model:GetDescendants()))
 
 		local cf, size = model:GetBoundingBox()
-		local center = cf.Position
-		local dist = math.max(size.X, size.Y, size.Z) * 1.6
+		local maxSize = math.max(size.X, size.Y, size.Z)
+		local distance = maxSize * 1.4
 
-		local hrp = model:FindFirstChild("HumanoidRootPart")
 		local head = model:FindFirstChild("Head")
-		local focus = (head and head.Position) or center
-		local cam = Instance.new("Camera")
-		cam.FieldOfView = 35
-		cam.CFrame = CFrame.lookAt(focus + Vector3.new(0, 0.4, dist), focus + Vector3.new(0, -0.3, 0))
-		cam.Parent = target
-		target.CurrentCamera = cam
+		local focus = (head and head.Position) or cf.Position
 
-		print(("[DialogueHandler] viewport set up for %s — parts=%d size=%s dist=%.1f"):format(
-			NPC.Name,
-			#model:GetDescendants(),
-			tostring(size),
-			dist
-		))
+		local camera = Instance.new("Camera")
+		camera.FieldOfView = 50
+		camera.CFrame = CFrame.new(focus + Vector3.new(0, 0.2, distance), focus)
+		camera.Parent = target
+		target.CurrentCamera = camera
 
-		local humanoid = model:FindFirstChildOfClass("Humanoid")
-		if humanoid then
-			humanoid.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
-			for _, p in ipairs(model:GetDescendants()) do
-				if p:IsA("BasePart") then p.Anchored = false end
-			end
-			task.spawn(function()
-				local animator = humanoid:FindFirstChildOfClass("Animator") or Instance.new("Animator", humanoid)
-				for _, t in ipairs(animator:GetPlayingAnimationTracks()) do t:Stop() end
-				local anim = Instance.new("Animation")
-				anim.AnimationId = IDLE_ANIM_ID
-				local ok, track = pcall(function() return animator:LoadAnimation(anim) end)
-				if ok and track then
-					track.Looped = true
-					track.Priority = Enum.AnimationPriority.Idle
-					track:Play()
-					track:AdjustSpeed(0.7)
+		local t0 = tick()
+		activeViewportConn = RunService.Heartbeat:Connect(function()
+			if not model.Parent then
+				if activeViewportConn then
+					activeViewportConn:Disconnect()
+					activeViewportConn = nil
 				end
-			end)
-		end
+				return
+			end
+			local dt = tick() - t0
+			local yBob = math.sin(dt * 2.0) * 0.05
+			model:PivotTo(basePivot + Vector3.new(0, yBob, 0))
+		end)
 	end
 
 	local function clearNPCViewport(dialogueUI)
+		if activeViewportConn then
+			activeViewportConn:Disconnect()
+			activeViewportConn = nil
+		end
 		local dialogueBox = dialogueUI and dialogueUI:FindFirstChild("DialogueBox")
 		if not dialogueBox then return end
-		local viewportFrame = dialogueBox:FindFirstChild("ViewportFrame")
-		if not viewportFrame then return end
-		local target = viewportFrame:FindFirstChild("NPCViewport") or viewportFrame
+		local viewportHolder = dialogueBox:FindFirstChild("ViewportFrame")
+		if not viewportHolder then return end
+		local target = viewportHolder:FindFirstChild("NPCViewport") or viewportHolder
 		for _, child in ipairs(target:GetChildren()) do
-			if child:IsA("Model") or child:IsA("Camera") or child:IsA("WorldModel") then
+			if child:IsA("Model") or child:IsA("BasePart") or child:IsA("Camera") or child:IsA("WorldModel") then
 				child:Destroy()
 			end
 		end
@@ -221,11 +222,11 @@ return function(Client)
 			end
 
 			local d
-			if char == "." or char == "!" then d = 0.24
-			elseif char == "?" then d = 0.30
-			elseif char == "," or char == ";" then d = 0.13
-			elseif char == " " then d = 0.032
-			else d = 0.028
+			if char == "." or char == "!" then d = 0.26
+			elseif char == "?" then d = 0.32
+			elseif char == "," or char == ";" then d = 0.14
+			elseif char == " " then d = 0.035
+			else d = 0.031
 			end
 			task.wait(d)
 		end
