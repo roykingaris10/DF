@@ -114,14 +114,14 @@ return function(Client)
 
 		local cf, size = model:GetBoundingBox()
 		local maxSize = math.max(size.X, size.Y, size.Z)
-		local distance = maxSize * 1.4
+		local distance = maxSize * 1.1
 
 		local head = model:FindFirstChild("Head")
-		local focus = (head and head.Position) or cf.Position
+		local focus = (head and head.Position - Vector3.new(0, 0.7, 0)) or cf.Position
 
 		local camera = Instance.new("Camera")
 		camera.FieldOfView = 50
-		camera.CFrame = CFrame.new(focus + Vector3.new(0, 0.2, distance), focus)
+		camera.CFrame = CFrame.new(focus + Vector3.new(0, 0, -distance), focus)
 		camera.Parent = target
 		target.CurrentCamera = camera
 
