@@ -429,7 +429,10 @@ return function(Client)
 		dialogueUI.Visible = true
 
 		if NPC then
-			pcall(function() setupNPCViewport(dialogueUI, NPC) end)
+			print("[DialogueHandler] showDialogue NPC=", NPC, "calling setupNPCViewport")
+			setupNPCViewport(dialogueUI, NPC)
+		else
+			warn("[DialogueHandler] showDialogue called with no NPC")
 		end
 
 		if Client.CompassController then
