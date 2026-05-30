@@ -39,6 +39,105 @@ return function(Client)
 		lineSound:Play()
 	end
 
+	local letterSound = Instance.new("Sound")
+	letterSound.Name = "DialogueSFX_Letter"
+	letterSound.SoundId = "rbxassetid://108775056064359"
+	letterSound.Volume = 0.12
+	letterSound.Parent = script
+
+	local function playLetterSound()
+		letterSound.PlaybackSpeed = 0.92 + math.random() * 0.18
+		letterSound:Stop()
+		letterSound:Play()
+	end
+
+	local IDLE_ANIM_ID = "rbxassetid://507766388"
+
+	local function setupNPCViewport(dialogueUI, NPC)
+		local dialogueBox = dialogueUI:FindFirstChild("DialogueBox")
+		if not dialogueBox then return end
+		local viewportFrame = dialogueBox:FindFirstChild("ViewportFrame")
+		if not viewportFrame then return end
+		local target = viewportFrame:FindFirstChild("NPCViewport")
+		if not target or not target:IsA("ViewportFrame") then target = viewportFrame end
+		if not target:IsA("ViewportFrame") then return end
+
+		for _, child in ipairs(target:GetChildren()) do
+			if child:IsA("Model") or child:IsA("Camera") or child:IsA("WorldModel") then
+				child:Destroy()
+			end
+		end
+
+		local model = NPC:Clone()
+		for _, p in ipairs(model:GetDescendants()) do
+			if p:IsA("BasePart") then
+				p.Anchored = false
+				p.CanCollide = false
+			end
+			if p:IsA("ProximityPrompt") or p:IsA("Highlight") or p:IsA("BillboardGui") then
+				p:Destroy()
+			end
+		end
+		model.Parent = target
+
+		local hrp = model:FindFirstChild("HumanoidRootPart") or model.PrimaryPart
+		local head = model:FindFirstChild("Head")
+		local cam = Instance.new("Camera")
+		cam.FieldOfView = 28
+		if head and hrp then
+			local focus = head.Position + Vector3.new(0, -0.5, 0)
+			local pos   = head.Position - hrp.CFrame.LookVector * 4 + Vector3.new(0, 0.4, 0)
+			cam.CFrame = CFrame.lookAt(pos, focus)
+		elseif hrp then
+			cam.CFrame = CFrame.lookAt(hrp.Position - hrp.CFrame.LookVector * 4 + Vector3.new(0, 2.2, 0), hrp.Position + Vector3.new(0, 1.4, 0))
+		end
+		cam.Parent = target
+		target.CurrentCamera = cam
+
+		local humanoid = model:FindFirstChildOfClass("Humanoid")
+		if humanoid then
+			humanoid.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
+			humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
+			local animator = humanoid:FindFirstChildOfClass("Animator") or Instance.new("Animator", humanoid)
+			for _, t in ipairs(animator:GetPlayingAnimationTracks()) do t:Stop() end
+			task.spawn(function()
+				task.wait(0.15)
+				if not model.Parent then return end
+				local anim = Instance.new("Animation")
+				anim.AnimationId = IDLE_ANIM_ID
+				local ok, track = pcall(function() return animator:LoadAnimation(anim) end)
+				if ok and track then
+					track.Looped = true
+					track.Priority = Enum.AnimationPriority.Idle
+					track:Play()
+					track:AdjustSpeed(0.75)
+				end
+			end)
+		end
+	end
+
+	local function clearNPCViewport(dialogueUI)
+		local dialogueBox = dialogueUI and dialogueUI:FindFirstChild("DialogueBox")
+		if not dialogueBox then return end
+		local viewportFrame = dialogueBox:FindFirstChild("ViewportFrame")
+		if not viewportFrame then return end
+		local target = viewportFrame:FindFirstChild("NPCViewport") or viewportFrame
+		for _, child in ipairs(target:GetChildren()) do
+			if child:IsA("Model") or child:IsA("Camera") or child:IsA("WorldModel") then
+				child:Destroy()
+			end
+		end
+	end
+
+	local function setDialogueCombatBlock(active)
+		if player.Character then
+			player.Character:SetAttribute("InDialogue", active and true or nil)
+		end
+		pcall(function()
+			Network:get("DialogueAction", "SetCombatBlock", { active = active and true or false })
+		end)
+	end
+
 	local function ensureContinueHint(dialogueUI)
 		local hint = dialogueUI:FindFirstChild("ClickToContinueHint")
 		if hint then return hint end
@@ -68,6 +167,20 @@ return function(Client)
 		return utf8.len(stripped) or #stripped
 	end
 
+	local function ensurePulseScale(label)
+		local s = label:FindFirstChild("TypePulse")
+		if not s or not s:IsA("UIScale") then
+			if s then s:Destroy() end
+			s = Instance.new("UIScale")
+			s.Name = "TypePulse"
+			s.Scale = 1
+			s.Parent = label
+		end
+		return s
+	end
+
+	local LETTER_POP = TweenInfo.new(0.09, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+
 	local function runTypewriter(label, richText, state)
 		if not label or not label:IsA("TextLabel") then return end
 
@@ -75,6 +188,9 @@ return function(Client)
 		label.Text = richText
 		label.MaxVisibleGraphemes = 0
 		label.TextTransparency = 1
+
+		local scale = ensurePulseScale(label)
+		scale.Scale = 1
 
 		TweenService:Create(label, TYPE_FADE_TI, { TextTransparency = 0 }):Play()
 		local stroke = label:FindFirstChildOfClass("UIStroke")
@@ -88,12 +204,19 @@ return function(Client)
 		while i < total do
 			if state.skip then
 				label.MaxVisibleGraphemes = total
+				scale.Scale = 1
 				return
 			end
 			i += 1
 			label.MaxVisibleGraphemes = i
 
 			local char = plain:sub(i, i)
+			if char ~= " " and char ~= "" then
+				playLetterSound()
+				scale.Scale = 1.09
+				TweenService:Create(scale, LETTER_POP, { Scale = 1 }):Play()
+			end
+
 			local d
 			if char == "." or char == "!" then d = 0.28
 			elseif char == "?" then d = 0.35
@@ -103,6 +226,7 @@ return function(Client)
 			end
 			task.wait(d)
 		end
+		scale.Scale = 1
 	end
 
 	local FactionController = require(Nodes.Gameplay.FactionController)(Client)
@@ -280,17 +404,18 @@ return function(Client)
 		InteractFrame.collect.TextTransparency = 1
 	end
 
-	local function showDialogue(UI, dialogueUI)
+	local function showDialogue(UI, dialogueUI, NPC)
 		DialogueHandler.inDialogue = true
 
 		interactforceclose()
+		setDialogueCombatBlock(true)
 
 		pcall(function()
 			local hudHolder = UI:FindFirstChild("HUDHolder")
 			if hudHolder then hudHolder.Visible = false end
 
-			local toolbar = PlayerGui:FindFirstChild("HUD").ToolboxFrame
-			if toolbar.Visible then toolbar.Visible = false end
+			local toolbar = PlayerGui:FindFirstChild("HUD"):FindFirstChild("ToolboxFrame")
+			if toolbar then toolbar.Visible = false end
 		end)
 
 		local dialogueFolder = UI:FindFirstChild("DialogueFolder")
@@ -299,6 +424,11 @@ return function(Client)
 			if dialogueBox then dialogueBox.Visible = true end
 		end
 		dialogueUI.Visible = true
+
+		if NPC then
+			pcall(function() setupNPCViewport(dialogueUI, NPC) end)
+		end
+
 		if Client.CompassController then
 			Client.CompassController.Close()
 		end
@@ -312,18 +442,21 @@ return function(Client)
 			if dialogueBox then dialogueBox.Visible = false end
 		end
 
+		pcall(function() clearNPCViewport(dialogueUI) end)
+
 		resetChoices(dialogueUI.ChoiceHolder)
 
 		pcall(function()
 			local hudHolder = UI:FindFirstChild("HUDHolder")
 			if hudHolder then hudHolder.Visible = true end
 
-			local toolbar = PlayerGui:FindFirstChild("HUD").ToolboxFrame
+			local toolbar = PlayerGui:FindFirstChild("HUD"):FindFirstChild("ToolboxFrame")
 			if toolbar then toolbar.Visible = true end
 		end)
 
 		dialogueUI.Visible = false
 		DialogueHandler.inDialogue = false
+		setDialogueCombatBlock(false)
 
 		if Client.CompassController then
 			Client.CompassController.Open()
@@ -521,7 +654,7 @@ return function(Client)
 			local npcText = dialogueBox.Textbox.npcText
 			npcText.RichText = true
 
-			showDialogue(UI, dialogueUI)
+			showDialogue(UI, dialogueUI, NPC)
 
 			repeat
 				dialogueBox.NPCName.Text = (`~ {NPC.Name} ~`)
@@ -686,6 +819,11 @@ return function(Client)
 		interactforceclose()
 		DialogueHandler.inDialogue = false
 		DialogueHandler.mouseClicked = false
+		setDialogueCombatBlock(false)
+
+		local UI = PlayerGui:FindFirstChild("HUD")
+		local dialogueUI = UI and UI:FindFirstChild("DialogueFolder") and UI.DialogueFolder:FindFirstChild("Dialogue")
+		if dialogueUI then pcall(function() clearNPCViewport(dialogueUI) end) end
 
 		if DialogueHandler.distanceCheckConnection then
 			DialogueHandler.distanceCheckConnection:Disconnect()
