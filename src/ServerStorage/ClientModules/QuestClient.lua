@@ -247,7 +247,6 @@ return function(Client)
 		dPadding.PaddingTop = UDim.new(0, 16)
 		dPadding.PaddingBottom = UDim.new(0, 16)
 		dPadding.PaddingLeft = UDim.new(0, 16)
-	local ACTIVE_COLOR = "rgb(255,255,255)"
 		dPadding.Parent = details
 		local dTitle = Instance.new("TextLabel")
 		dTitle.Name = "Title"
@@ -427,12 +426,8 @@ return function(Client)
 		end
 	end
 
-	local DONE_PREFIX = '<font color="#7FCC8F">✓</font>'
-	local ACTIVE_PREFIX = '<font color="#7FCC8F"><b>◇</b></font>'
-	local PENDING_PREFIX = '<font color="rgb(150,150,165)">·</font>'
-
 	local DONE_COLOR = "rgb(140,140,150)"
-	local ACTIVE_COLOR = "#7FCC8F"
+	local ACTIVE_COLOR = "rgb(255,255,255)"
 	local PENDING_COLOR = "rgb(190,190,200)"
 
 	local function spawnLine(container, template, text, order)
