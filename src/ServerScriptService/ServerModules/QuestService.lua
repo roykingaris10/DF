@@ -434,11 +434,28 @@ function QuestService:GetCompletedQuests(player)
 	return profile and profile.questsCompleted or {}
 end
 
+function QuestService:GetTrackedQuest(player)
+	local profile = getProfile(player)
+	return profile and profile.TrackedQuest or false
+end
+
+function QuestService:SetTrackedQuest(player, questId)
+	local profile = getProfile(player)
+	if not profile then return false end
+	if questId == false or questId == nil then
+		profile.TrackedQuest = nil
+	else
+		profile.TrackedQuest = questId
+	end
+	return true
+end
+
 function QuestService:SyncToClient(player)
 	broadcast(player, {
 		Kind = "Sync",
 		Active = self:GetActiveQuests(player),
 		Completed = self:GetCompletedQuests(player),
+		Tracked = self:GetTrackedQuest(player),
 	})
 end
 
@@ -460,6 +477,12 @@ if Network and Network.bindFunction then
 	end)
 	Network:bindFunction("Quest_GetCompleted", function(player)
 		return QuestService:GetCompletedQuests(player)
+	end)
+	Network:bindFunction("Quest_GetTracked", function(player)
+		return QuestService:GetTrackedQuest(player)
+	end)
+	Network:bindFunction("Quest_SetTracked", function(player, questId)
+		return QuestService:SetTrackedQuest(player, questId)
 	end)
 end
 

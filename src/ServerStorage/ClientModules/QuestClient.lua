@@ -444,8 +444,9 @@ return function(Client)
 	local function fillObjectives(quest, progress)
 		local container = refs.trackerObjectivesScroll
 		if not container then return end
-		local template = getKitTemplate("ObjectiveText")
-		if not template then return end
+		local titleTemplate = getKitTemplate("TitleText")
+		local objTemplate = getKitTemplate("ObjectiveText")
+		if not objTemplate then return end
 
 		clearClones(container)
 
@@ -454,9 +455,13 @@ return function(Client)
 		local readyToTurnIn = currentStage > #stages
 		local order = 0
 
-		local function add(text)
+		local function addTitle(text)
 			order += 1
-			spawnLine(container, template, text, order)
+			spawnLine(container, titleTemplate or objTemplate, text, order)
+		end
+		local function addObjective(text)
+			order += 1
+			spawnLine(container, objTemplate, text, order)
 		end
 
 		for stageIdx, stage in ipairs(stages) do
@@ -465,11 +470,11 @@ return function(Client)
 			local stageTitle = string.upper(stage.Title or ("Stage " .. stageIdx))
 
 			if stageDone then
-				add(string.format('%s <font color="%s"><i><b>"%s"</b></i></font>', DONE_PREFIX, DONE_COLOR, stageTitle))
+				addTitle(string.format('<s><font color="%s"><i><b>"%s"</b></i></font></s>', DONE_COLOR, stageTitle))
 			elseif stageActive then
-				add(string.format('%s <font color="%s"><i><b>"%s"</b></i></font>', ACTIVE_PREFIX, ACTIVE_COLOR, stageTitle))
+				addTitle(string.format('<font color="%s"><i><b>"%s"</b></i></font>', ACTIVE_COLOR, stageTitle))
 			else
-				add(string.format('%s <font color="%s"><i><b>"%s"</b></i></font>', PENDING_PREFIX, PENDING_COLOR, stageTitle))
+				addTitle(string.format('<font color="%s"><i><b>"%s"</b></i></font>', PENDING_COLOR, stageTitle))
 			end
 
 			if stage.Objectives then
@@ -484,19 +489,20 @@ return function(Client)
 						have = 0
 					end
 					local desc = string.upper(obj.Description or obj.Id or "?")
-					if stageDone or have >= need then
-						add(string.format('    %s <font color="%s">%s (%d/%d)</font>', DONE_PREFIX, DONE_COLOR, desc, have, need))
+					local complete = stageDone or have >= need
+					if complete then
+						addObjective(string.format('<s><font color="%s">%s (%d/%d)</font></s>', DONE_COLOR, desc, need, need))
 					elseif stageActive then
-						add(string.format('    %s <font color="%s"><b>%s (%d/%d)</b></font>', ACTIVE_PREFIX, ACTIVE_COLOR, desc, have, need))
+						addObjective(string.format('<font color="%s"><b>%s (%d/%d)</b></font>', ACTIVE_COLOR, desc, have, need))
 					else
-						add(string.format('    %s <font color="%s">%s</font>', PENDING_PREFIX, PENDING_COLOR, desc))
+						addObjective(string.format('<font color="%s">%s (%d/%d)</font>', PENDING_COLOR, desc, have, need))
 					end
 				end
 			end
 		end
 
 		if readyToTurnIn and quest.TurnInTo then
-			add(string.format('%s <font color="%s"><b>%s</b></font>', ACTIVE_PREFIX, ACTIVE_COLOR, string.upper("Turn in to " .. quest.TurnInTo)))
+			addTitle(string.format('<font color="%s"><b>%s</b></font>', ACTIVE_COLOR, string.upper("Turn in to " .. quest.TurnInTo)))
 		end
 	end
 
