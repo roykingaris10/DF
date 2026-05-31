@@ -98,7 +98,7 @@ return function(Client)
 		end
 
 		refs.tracker = root
-		refs.trackerTitle = find("QuestTrackerTitle", "QuestNameLabel", "QuestTitle")
+		refs.trackerTitle = find("QuestTrackerTitle", "QuestNameLabel", "QuestTitle", "Title")
 		refs.trackerObjectivesScroll = find("ObjectiveScroll", "ObjectivesScroll", "ObjectiveContainer")
 		refs.trackerTimer = find("Timer", "TimerLabel")
 
@@ -247,9 +247,8 @@ return function(Client)
 		dPadding.PaddingTop = UDim.new(0, 16)
 		dPadding.PaddingBottom = UDim.new(0, 16)
 		dPadding.PaddingLeft = UDim.new(0, 16)
-		dPadding.PaddingRight = UDim.new(0, 16)
+	local ACTIVE_COLOR = "rgb(255,255,255)"
 		dPadding.Parent = details
-
 		local dTitle = Instance.new("TextLabel")
 		dTitle.Name = "Title"
 		dTitle.Size = UDim2.new(1, 0, 0, 26)
@@ -391,8 +390,18 @@ return function(Client)
 		end)
 	end
 
+	local function saveTracked()
+		if not (Network and Network.get) then return end
+		task.spawn(function()
+			pcall(function()
+				Network:get("Quest_SetTracked", trackedId or false)
+			end)
+		end)
+	end
+
 	function QuestClient:SetTracked(questId)
 		if trackedId == questId then trackedId = false else trackedId = questId end
+		saveTracked()
 		QuestClient:RefreshTracker()
 		if selectedId then QuestClient:RenderDetails(selectedId) end
 	end
@@ -652,6 +661,9 @@ return function(Client)
 		if kind == "Sync" then
 			activeQuests = payload.Active or {}
 			completedQuests = payload.Completed or {}
+			if payload.Tracked ~= nil and activeQuests[payload.Tracked] then
+				trackedId = payload.Tracked
+			end
 			if selectedId and not activeQuests[selectedId] and not table.find(completedQuests, selectedId) then
 				selectedId = nil
 			end
@@ -749,6 +761,10 @@ return function(Client)
 				if activeOk and active then activeQuests = active end
 				local completedOk, completed = pcall(function() return Network:get("Quest_GetCompleted") end)
 				if completedOk and completed then completedQuests = completed end
+				local trackedOk, tracked = pcall(function() return Network:get("Quest_GetTracked") end)
+				if trackedOk and tracked and activeQuests[tracked] then
+					trackedId = tracked
+				end
 				QuestClient:Refresh()
 				QuestClient:RefreshTracker()
 			end

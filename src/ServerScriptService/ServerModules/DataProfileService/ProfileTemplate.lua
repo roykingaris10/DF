@@ -129,6 +129,7 @@ local ProfileTemplate = {
 			packs = {},
 			currentQuests = {},
 			questsCompleted = {},
+			TrackedQuest = nil,
 		},
 		
 	},
