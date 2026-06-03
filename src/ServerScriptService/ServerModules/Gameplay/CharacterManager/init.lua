@@ -164,6 +164,7 @@ function Characters:Create(NoPositioning: boolean?)
 			self.Humanoid.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.Subject
 			self.Humanoid.NameDisplayDistance = 100
 			self.Humanoid.HealthDisplayDistance = 0
+			self.Humanoid.NameOcclusion = Enum.NameOcclusion.NoOcclusion
 		end
 	end
 	

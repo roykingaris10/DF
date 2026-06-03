@@ -358,8 +358,13 @@ return function(Client)
 
 	function ClientChar.Init()
 		local function setupForCharacter(char)
-			char:WaitForChild("Humanoid", 10)
+			local hum = char:WaitForChild("Humanoid", 10)
 			char:WaitForChild("HumanoidRootPart", 10)
+			-- Hide our OWN nametag locally. This client-side write does not replicate,
+			-- so other players still see our name via the server's Subject setting.
+			if hum then
+				hum.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
+			end
 			ClientChar.CreateEntity()
 			task.spawn(ClientChar.CharSpawn)
 		end
