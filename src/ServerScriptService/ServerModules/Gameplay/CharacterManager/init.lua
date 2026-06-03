@@ -147,8 +147,8 @@ function Characters:Create(NoPositioning: boolean?)
 	self.Humanoid.AutomaticScalingEnabled = false
 	self.Humanoid.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
 
-	if self.Parent.player and self.SlotProfile and self.SlotProfile.UserData then
-		local ud = self.SlotProfile.UserData
+	if self.Parent.player then
+		local ud = (self.SlotProfile and self.SlotProfile.UserData) or {}
 		local f = ud.FirstName or ""
 		local m = ud.MiddleName
 		local l = ud.LastName or ""
@@ -159,13 +159,16 @@ function Characters:Create(NoPositioning: boolean?)
 			fullName = f .. " " .. l
 		end
 		fullName = (fullName:gsub("^%s+", ""):gsub("%s+$", ""))
-		if fullName ~= "" then
-			self.Humanoid.DisplayName = fullName
-			self.Humanoid.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.Subject
-			self.Humanoid.NameDisplayDistance = 100
-			self.Humanoid.HealthDisplayDistance = 0
-			self.Humanoid.NameOcclusion = Enum.NameOcclusion.NoOcclusion
+		if fullName == "" then
+			fullName = self.Parent.player.DisplayName ~= "" and self.Parent.player.DisplayName or self.Parent.player.Name
 		end
+		self.Humanoid.DisplayName = fullName
+		self.Humanoid.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.Subject
+		self.Humanoid.NameDisplayDistance = 100
+		self.Humanoid.HealthDisplayDistance = 0
+		self.Humanoid.NameOcclusion = Enum.NameOcclusion.NoOcclusion
+		print("[NameTag-Server]", self.Parent.player.Name, "set DisplayName:", fullName,
+			"Mode:", self.Humanoid.DisplayDistanceType, "Dist:", self.Humanoid.NameDisplayDistance)
 	end
 	
 	self.Parent.Animator:Cache();
