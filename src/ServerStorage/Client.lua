@@ -101,6 +101,7 @@ end
 Client.Network:setKey()
 Client.MasterControl:Enable()
 Client.loaded = true
+player:SetAttribute("ClientLoaded", true)
 print('Client Setup Completed')
 
 return nil
