@@ -161,8 +161,9 @@ function Characters:Create(NoPositioning: boolean?)
 		fullName = (fullName:gsub("^%s+", ""):gsub("%s+$", ""))
 		if fullName ~= "" then
 			self.Humanoid.DisplayName = fullName
-			self.Humanoid.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.Viewer
+			self.Humanoid.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.Subject
 			self.Humanoid.NameDisplayDistance = 100
+			self.Humanoid.HealthDisplayDistance = 0
 		end
 	end
 	
