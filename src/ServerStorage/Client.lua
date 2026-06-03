@@ -80,7 +80,7 @@ local Startingtable = {script.CharSetup.CharacterHandler,script.CharSetup.Inputt
 	script.ClientModules.UISetup,script.ClientModules.CrewClient, script.ClientModules.InventoryClient,
 	script.ClientModules.EffectsClient, script.ClientModules.FootstepsClient, script.ClientModules.PlayerList, script.ClientModules.DialogueHandler, script.ClientModules.FactionClient, script.ClientModules.RegionController,
 	script.ClientModules.TimeWeatherController,  script.ClientModules.MenuClient, script.ClientModules.SettingsController, script.ClientModules.TopbarController, script.ClientModules.PartyClient,
-	script.ClientModules.CompassController, script.ClientModules.NotificationController, script.ClientModules.DeathClient, script.ClientModules.QuestCompleteController, script.ClientModules.QuestClient, script.ClientModules.DevFakePlayers, script.ClientModules.TopbarIcons, script.ClientModules.InnerDialogueClient}
+	script.ClientModules.CompassController, script.ClientModules.NotificationController, script.ClientModules.DeathClient, script.ClientModules.QuestCompleteController, script.ClientModules.QuestClient, script.ClientModules.DevFakePlayers, script.ClientModules.TopbarIcons, script.ClientModules.InnerDialogueClient, script.ClientModules.NameTagController}
 
 for _, folder in pairs(FoldersForLoading) do
 	for i, obj in pairs(folder:GetChildren()) do
